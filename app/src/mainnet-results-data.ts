@@ -5,11 +5,12 @@
 // refreshed.
 //
 // This data carries the record's structured facts: addresses,
-// epochs, amounts, fees, and both verifiers' counts. It does
-// not carry the canonical receipt files the esmeralda section
-// offers for download: a receipt file is the standalone
-// verifier's own output from a live run, and the command
-// printed beside each tender here reproduces it.
+// epochs, amounts, fees, and both verifiers' counts. The
+// canonical receipt files themselves, the standalone
+// verifier's own output from a live run, are carried beside
+// it in mainnet-receipts-data.ts and offered for download
+// under each tender; the command printed beside each tender
+// here reproduces one from a clean checkout.
 
 export interface MainnetTenderRecord {
   key: string;

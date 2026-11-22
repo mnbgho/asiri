@@ -1,10 +1,19 @@
 import { beforeEach, describe, it, expect } from "vitest";
 import { App } from "../src/app";
+import { bytesToHex } from "../src/cbor";
+import { sha256 } from "../src/hash";
+import {
+  MAINNET_TENDER_RECEIPTS,
+} from "../src/mainnet-receipts-data";
 import {
   MAINNET_RESULTS_META,
   MAINNET_TENDER_RECORDS,
 } from "../src/mainnet-results-data";
 import { renderResults } from "../src/screens/results";
+
+async function sha256Hex(text: string): Promise<string> {
+  return bytesToHex(await sha256(new TextEncoder().encode(text)));
+}
 
 // The mainnet records are generated from the season's
 // evidence record. These tests guard the shape and the
@@ -80,6 +89,95 @@ describe("mainnet results data", () => {
         expect(t.reveals).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+// The mainnet receipts are generated from the receipt files
+// themselves: the standalone verifier's own output from a live
+// run against the public mainnet indexer. These tests guard
+// the joins and the figures the way the esmeralda receipt
+// tests do: a generation that drops a receipt, mislabels its
+// provenance, or drifts a number must fail here.
+describe("mainnet receipts", () => {
+  it("carries one receipt for every mainnet record, in order", () => {
+    expect(MAINNET_TENDER_RECEIPTS).toHaveLength(6);
+    expect(MAINNET_TENDER_RECEIPTS.map((r) => r.key)).toEqual([
+      "gate",
+      "tie",
+      "override",
+      "dispute",
+      "expiry",
+      "scale",
+    ]);
+    const byTender = new Map(
+      MAINNET_TENDER_RECEIPTS.map((r) => [r.tender, r]),
+    );
+    for (const t of MAINNET_TENDER_RECORDS) {
+      expect(byTender.has(t.tender)).toBe(true);
+    }
+  });
+
+  it("the json is the receipt file itself, hash and all", async () => {
+    for (const r of MAINNET_TENDER_RECEIPTS) {
+      expect(await sha256Hex(r.json)).toBe(r.sha256);
+      const parsed = JSON.parse(r.json);
+      expect(parsed.receipt_version).toBe("asiri-receipt-1");
+      expect(parsed.network).toBe("mainnet");
+      expect(parsed.tender).toBe(r.tender);
+      expect(parsed.checks_summary).toEqual({
+        pass: r.pass,
+        fail: r.fail,
+        could_not_read: r.couldNotRead,
+      });
+      expect(parsed.provenance.reveal_transactions).toBe(
+        r.revealProvenance,
+      );
+      expect(parsed.checks).toEqual(r.checks);
+    }
+  });
+
+  it("every mainnet receipt passes in full from the indexer", () => {
+    const expected: Record<string, number> = {
+      gate: 13,
+      tie: 13,
+      override: 15,
+      dispute: 13,
+      expiry: 10,
+      scale: 13,
+    };
+    for (const r of MAINNET_TENDER_RECEIPTS) {
+      expect(r.pass).toBe(expected[r.key]);
+      expect(r.fail).toBe(0);
+      expect(r.couldNotRead).toBe(0);
+      expect(r.checks).toHaveLength(expected[r.key]);
+      for (const c of r.checks) {
+        expect(c.ok).toBe(true);
+      }
+      if (r.key === "expiry") {
+        expect(r.revealProvenance).toContain("no reveals");
+      } else {
+        expect(r.revealProvenance).toBe("indexer transaction bodies");
+      }
+    }
+  });
+
+  it("the override receipt's exception agrees with the record", () => {
+    const r = MAINNET_TENDER_RECEIPTS.find(
+      (x) => x.key === "override",
+    )!;
+    const parsed = JSON.parse(r.json);
+    const rec = MAINNET_TENDER_RECORDS.find(
+      (x) => x.key === "override",
+    )!;
+    expect(parsed.exception.proven_lowest_revealed.price_microtari)
+      .toBe(rec.provenLowestMicro);
+    expect(parsed.exception.price_paid.price_microtari)
+      .toBe(rec.paidMicro);
+    expect(parsed.exception.difference_microtari).toBe(2000000);
+    expect(parsed.exception.rationale_hash).toBe(rec.rationaleHash);
+    expect(parsed.override.rationale_text_check).toContain(
+      "the supplied text hashes to the recorded rationale hash",
+    );
   });
 });
 
@@ -181,6 +279,22 @@ describe("mainnet results screen", () => {
     expect(t).toContain("proven lowest revealed price");
     expect(t).toContain("14 tari, by seller2");
     expect(t).toContain("nothing paid, expired at epoch 39240");
+    // The real receipts are presented: check rows from the
+    // receipt files, their provenance and hashes, and the
+    // download. The interim wording that said the records
+    // carry no receipt is gone.
+    expect(t).toContain(
+      "settled 15000000 at epoch 39218, winner matches the award",
+    );
+    expect(t).toContain(
+      "award 11000000 at counter 1, best valid reveal 11000000",
+    );
+    expect(t).toContain("receipt provenance: indexer transaction bodies");
+    expect(t).toContain(
+      "receipt sha256: 9e1da09ac76fc682a4ebe03bbe36acf9e682735e90328127cd0cfca1ad6acd51",
+    );
+    expect(t).toContain("download the receipt (json)");
+    expect(t).not.toContain("they do not include a receipt download");
     // The esmeralda sections belong to the esmeralda view.
     expect(t).not.toContain("falsification cards");
     expect(t).not.toContain("zero-extraction ledger");

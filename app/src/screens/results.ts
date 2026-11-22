@@ -1,26 +1,27 @@
 // The results screen: what the verifiers found when they read
 // the season tenders. The screen follows the app's network.
-// On mainnet it shows the mainnet season's records from
-// mainnet-results-data.ts: the structured facts of the
-// season's evidence record, with both verifiers' counts. On
-// esmeralda it shows the esmeralda record below, unchanged:
-// the rows in results-data.ts are the standalone verifier's
-// own output, captured on the date shown, never retyped, and
-// any tender there can be rechecked live in the verify
-// screen, in the browser, against the same public record.
+// On mainnet it shows the mainnet season: the structured
+// facts of the season's evidence record from
+// mainnet-results-data.ts, with both verifiers' counts, and
+// under each tender the standalone verifier's own receipt
+// for it, its check rows and the file itself, from
+// mainnet-receipts-data.ts. On esmeralda it shows the
+// esmeralda record below, unchanged: the rows in
+// results-data.ts are the standalone verifier's own output,
+// captured on the date shown, never retyped, and any tender
+// there can be rechecked live in the verify screen, in the
+// browser, against the same public record.
 //
-// Below the esmeralda check rows, each tender offers its
-// dual-verifier receipt as a download: the receipt file
-// itself, byte for byte, from receipts-data.ts. The mainnet
-// records offer no download: a receipt file is the
-// standalone verifier's own output from a live run, and the
-// command printed under each mainnet record reproduces it.
-// The exception invoice and the zero-extraction ledger
-// follow on the esmeralda view, as data generated from the
-// published documents in proof-data.ts. The screen closes,
-// on esmeralda, with the falsification cards from
-// falsification-data.ts: labelled tampers of the records
-// above, rejected by both verifiers at the quoted checks.
+// Below the check rows, each tender on either network offers
+// its receipt as a download: the receipt file itself, byte
+// for byte (esmeralda's from receipts-data.ts, mainnet's
+// from mainnet-receipts-data.ts). The exception invoice and
+// the zero-extraction ledger follow on the esmeralda view,
+// as data generated from the published documents in
+// proof-data.ts. The screen closes, on esmeralda, with the
+// falsification cards from falsification-data.ts: labelled
+// tampers of the records above, rejected by both verifiers
+// at the quoted checks.
 import { App, el, explorerLink, setAria } from "../app";
 import {
   FALSIFICATION_CARDS,
@@ -29,6 +30,9 @@ import {
   FALSIFICATION_META,
   type FalsificationRejection,
 } from "../falsification-data";
+import {
+  MAINNET_TENDER_RECEIPTS,
+} from "../mainnet-receipts-data";
 import {
   MAINNET_RESULTS_META,
   MAINNET_TENDER_RECORDS,
@@ -81,12 +85,16 @@ function renderMainnetResults(
       "these are tari mainnet records. six tenders ran on mainnet against the heartland provisions circle, and both verifiers, the standalone script and the app's own verifier, read each tender from the public indexer and passed it in full with identical readings. open any tender in the verify screen to re-run the same checks live in your browser.",
     ),
     notice(
-      "the records below carry the season's structured facts: addresses, epochs, amounts, fees, and the two verifiers' counts. they do not include a receipt download: a receipt file is the standalone verifier's own output from a live run, and the command printed under each record reproduces it from a clean checkout of the repo.",
+      "the records below carry the season's structured facts: addresses, epochs, amounts, fees, and the two verifiers' counts. under each record sits that tender's receipt: the standalone verifier's own output from a live run against the public mainnet indexer, its check rows shown in full and the file itself offered as a download, byte for byte. the command printed under each record reproduces the receipt from a clean checkout of the repo.",
     ),
   );
   kvNode(intro.body, "circle", explorerLink(app, "component", meta.circle));
   kv(intro.body, "network fees, six tenders", micro(meta.totalFeesMicro));
   wrap.append(intro.box);
+
+  const receiptByTender = new Map(
+    MAINNET_TENDER_RECEIPTS.map((r) => [r.tender, r]),
+  );
 
   for (const t of MAINNET_TENDER_RECORDS) {
     const b = box(t.title, t.state);
@@ -96,6 +104,21 @@ function renderMainnetResults(
       "result",
       `${t.standalonePass} of ${t.standaloneTotal} checks passed in the standalone verifier, ${t.appPass} of ${t.appTotal} in the app verifier`,
     );
+    const receipt = receiptByTender.get(t.tender);
+    if (receipt) {
+      for (const row of receipt.checks) {
+        const state = row.ok === null ? " unknown" : row.ok ? "" : " fail";
+        const r = el("div", `check-row${state}`);
+        r.append(el("span", "tick", row.ok === null ? "?" : row.ok ? "✓" : "!"));
+        const text = el("div");
+        text.append(
+          el("div", undefined, row.check),
+          el("div", "detail", row.detail),
+        );
+        r.append(text);
+        b.body.append(r);
+      }
+    }
     const proves = el("div", "detail");
     proves.append(document.createTextNode(t.proves));
     b.body.append(proves);
@@ -172,6 +195,39 @@ function renderMainnetResults(
       ),
     );
     b.body.append(cmd);
+    if (receipt) {
+      const total = receipt.pass + receipt.fail + receipt.couldNotRead;
+      kv(
+        b.body,
+        "receipt",
+        `${receipt.pass} of ${total} checks passed` +
+          (receipt.fail ? `, ${receipt.fail} failed` : "") +
+          (receipt.couldNotRead
+            ? `, ${receipt.couldNotRead} could not be read`
+            : ""),
+      );
+      const prov = el("div", "detail");
+      prov.append(
+        document.createTextNode(
+          `receipt provenance: ${receipt.revealProvenance}`,
+        ),
+      );
+      b.body.append(prov);
+      const hash = el("div", "detail");
+      hash.append(
+        document.createTextNode(`receipt sha256: ${receipt.sha256}`),
+      );
+      b.body.append(hash);
+      const dl = el(
+        "button",
+        "btn btn-white btn-sm mt",
+        "download the receipt (json)",
+      );
+      dl.addEventListener("click", () =>
+        downloadTextFile(receipt.filename, receipt.json),
+      );
+      b.body.append(dl);
+    }
     wrap.append(b.box);
   }
 }
