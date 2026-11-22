@@ -1,18 +1,26 @@
-// The results screen: what the standalone verifier found when
-// it read the evidence tenders on the esmeralda testnet. The
-// rows in results-data.ts are the verifier's own output,
-// captured on the date shown, never retyped. Any tender here
-// can be rechecked live in the verify screen, in the browser,
-// against the same public record.
+// The results screen: what the verifiers found when they read
+// the season tenders. The screen follows the app's network.
+// On mainnet it shows the mainnet season's records from
+// mainnet-results-data.ts: the structured facts of the
+// season's evidence record, with both verifiers' counts. On
+// esmeralda it shows the esmeralda record below, unchanged:
+// the rows in results-data.ts are the standalone verifier's
+// own output, captured on the date shown, never retyped, and
+// any tender there can be rechecked live in the verify
+// screen, in the browser, against the same public record.
 //
-// Below the check rows, each tender offers its dual-verifier
-// receipt as a download: the receipt file itself, byte for
-// byte, from receipts-data.ts. The exception invoice and the
-// zero-extraction ledger follow, as data generated from the
-// published documents in proof-data.ts. The screen closes
-// with the falsification cards from falsification-data.ts:
-// labelled tampers of the records above, rejected by both
-// verifiers at the quoted checks.
+// Below the esmeralda check rows, each tender offers its
+// dual-verifier receipt as a download: the receipt file
+// itself, byte for byte, from receipts-data.ts. The mainnet
+// records offer no download: a receipt file is the
+// standalone verifier's own output from a live run, and the
+// command printed under each mainnet record reproduces it.
+// The exception invoice and the zero-extraction ledger
+// follow on the esmeralda view, as data generated from the
+// published documents in proof-data.ts. The screen closes,
+// on esmeralda, with the falsification cards from
+// falsification-data.ts: labelled tampers of the records
+// above, rejected by both verifiers at the quoted checks.
 import { App, el, explorerLink, setAria } from "../app";
 import {
   FALSIFICATION_CARDS,
@@ -21,6 +29,10 @@ import {
   FALSIFICATION_META,
   type FalsificationRejection,
 } from "../falsification-data";
+import {
+  MAINNET_RESULTS_META,
+  MAINNET_TENDER_RECORDS,
+} from "../mainnet-results-data";
 import { EXCEPTION_INVOICE, LEDGER } from "../proof-data";
 import { TENDER_RECEIPTS, TenderReceipt } from "../receipts-data";
 import { RESULTS_META, TENDER_RESULTS } from "../results-data";
@@ -57,6 +69,113 @@ function failRow(r: FalsificationRejection): HTMLElement {
   return row;
 }
 
+function renderMainnetResults(
+  app: App,
+  wrap: HTMLElement,
+  go: (hash: string) => void,
+): void {
+  const meta = MAINNET_RESULTS_META;
+  const intro = box("verification results", "tari mainnet");
+  intro.body.append(
+    notice(
+      "these are tari mainnet records. six tenders ran on mainnet against the heartland provisions circle, and both verifiers, the standalone script and the app's own verifier, read each tender from the public indexer and passed it in full with identical readings. open any tender in the verify screen to re-run the same checks live in your browser.",
+    ),
+    notice(
+      "the records below carry the season's structured facts: addresses, epochs, amounts, fees, and the two verifiers' counts. they do not include a receipt download: a receipt file is the standalone verifier's own output from a live run, and the command printed under each record reproduces it from a clean checkout of the repo.",
+    ),
+  );
+  kvNode(intro.body, "circle", explorerLink(app, "component", meta.circle));
+  kv(intro.body, "network fees, six tenders", micro(meta.totalFeesMicro));
+  wrap.append(intro.box);
+
+  for (const t of MAINNET_TENDER_RECORDS) {
+    const b = box(t.title, t.state);
+    kvNode(b.body, "tender", explorerLink(app, "component", t.tender));
+    kv(
+      b.body,
+      "result",
+      `${t.standalonePass} of ${t.standaloneTotal} checks passed in the standalone verifier, ${t.appPass} of ${t.appTotal} in the app verifier`,
+    );
+    const proves = el("div", "detail");
+    proves.append(document.createTextNode(t.proves));
+    b.body.append(proves);
+    kv(
+      b.body,
+      "bids",
+      `${t.commitments} committed, ${t.reveals} revealed` +
+        (t.reveals < t.commitments
+          ? `, ${t.commitments - t.reveals} stayed sealed`
+          : ""),
+    );
+    if (t.paidMicro !== null) {
+      kv(
+        b.body,
+        "paid",
+        `${money(BigInt(t.paidMicro))} to ${t.paidTo}, settled at epoch ${t.closedEpoch}`,
+      );
+    } else {
+      kv(
+        b.body,
+        "outcome",
+        `nothing paid, expired at epoch ${t.closedEpoch}`,
+      );
+    }
+    if (
+      t.provenLowestMicro !== null &&
+      t.paidMicro !== null &&
+      t.rationaleHash !== null
+    ) {
+      kv(
+        b.body,
+        "proven lowest revealed price",
+        `${money(BigInt(t.provenLowestMicro))}, by ${t.provenLowestBy}`,
+      );
+      kv(
+        b.body,
+        "the override",
+        `the circle paid ${money(BigInt(t.paidMicro))} instead, by threshold approval, with a published rationale`,
+      );
+      kv(b.body, "rationale hash", t.rationaleHash);
+    }
+    if (t.disputeEvidenceHash !== null) {
+      kv(b.body, "dispute evidence hash", t.disputeEvidenceHash);
+    }
+    kv(
+      b.body,
+      "escrow",
+      `${money(BigInt(t.capMicro))} locked, ` +
+        (t.paidMicro !== null
+          ? `${money(BigInt(t.paidMicro))} paid, `
+          : "nothing paid, ") +
+        `${money(BigInt(t.refundMicro))} refunded`,
+    );
+    kv(b.body, "network fees", micro(t.feesMicro));
+    const recheck = el(
+      "button",
+      "btn btn-white btn-sm mt",
+      "recheck this tender live",
+    );
+    recheck.addEventListener("click", () => {
+      // These records live on mainnet; the live recheck has to
+      // read that network's indexer, whichever network is shown.
+      if (app.network !== "mainnet") app.setNetwork("mainnet");
+      go(`#/app/verify/${t.tender}`);
+    });
+    b.body.append(recheck);
+    const cmd = el("div", "detail mt");
+    cmd.append(
+      document.createTextNode("or run it yourself: "),
+      el(
+        "span",
+        "hash",
+        `python3 scripts/verify.py ${t.tender} --network ${meta.network}`,
+      ),
+    );
+    b.body.append(cmd);
+    wrap.append(b.box);
+  }
+}
+
 export async function renderResults(
   app: App,
   root: HTMLElement,
@@ -64,6 +183,11 @@ export async function renderResults(
 ): Promise<void> {
   const wrap = el("div");
   root.append(wrap);
+
+  if (app.network === "mainnet") {
+    renderMainnetResults(app, wrap, go);
+    return;
+  }
 
   const intro = box("verification results", "esmeralda testnet");
   intro.body.append(

@@ -253,6 +253,10 @@ beforeEach(() => {
 describe("falsification section render", () => {
   it("renders all seven cards with both verifiers' rows and the controls", async () => {
     const app = new App();
+    // The falsification section belongs to the esmeralda
+    // view of the results screen; a fresh app opens on
+    // mainnet, so put it on esmeralda first.
+    app.setNetwork("esmeralda");
     const r = new FakeEl("div") as unknown as HTMLElement;
     await renderResults(app, r, () => {});
     const t = (r as unknown as FakeEl).textContent;
