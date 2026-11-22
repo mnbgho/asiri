@@ -38,6 +38,35 @@ The templates are built so these properties hold by construction. Each one has a
 - I14. The winner paid is always the payment identity bound in the winning commitment.
 - I15. Every state transition emits an event, and the events plus the tender's public record suffice to reconstruct what happened without trusting the app.
 
+## Verify a tender yourself
+
+Every tender's public record can be checked without trusting this app or its operator. `scripts/verify.py` reads one tender and its circle from the network's public indexer and checks the record end to end:
+
+- the component runs the published template code,
+- the rules hash recomputes from the displayed rules,
+- the escrow funding matches the budget cap,
+- every reveal verifies against its commitment,
+- the award is the lowest valid revealed price under the locked rules, or a threshold-approved override whose chosen bid is itself a valid revealed bid and whose rationale hash matches the published text when you supply it,
+- the settlement equals the award, was reached only after delivery confirmation at threshold or a dispute resolved for the winner at its higher threshold, and honours the winning commitment's payment identity,
+- every bond reached a recorded outcome, the forfeit split is recorded, and the bond vault reconciles.
+
+It needs Python 3 and nothing else: no packages to install, no wallet, no account, no keys. It does need network access to the network's public indexer.
+
+Run it from the repo root:
+
+```
+python3 scripts/verify.py component_<tender address>
+python3 scripts/verify.py component_<tender address> --network esmeralda
+```
+
+Mainnet is the default network; pass `--network esmeralda` for a testnet tender. Add `--receipt` to print the full receipt as JSON instead of the check list, `--json` for the check list as JSON, and `--rationale <path>` to check an override's published rationale text against its recorded hash. For an override tender, run with `--rationale`: without the text, that one check reports a fail marked unverifiable, because the run was never given the text to check.
+
+Each check prints one line, pass, fail, or could not be read, and the run ends with a count. The exit code is zero only when every check passes. Could not be read means a reveal's transaction could not be read from any indexer, so that reveal cannot be recomputed against its commitment today, for example when an indexer has pruned old transaction bodies. It is neither a pass nor a failure, and the tender is not fully verified until every check has run, so the exit code stays non-zero.
+
 ## Status
 
-The template core is built and covered by engine tests. The web app and the network deployment come next. Nothing is live on any network yet.
+The templates are published on Tari mainnet: circle template `template_b86a46241753b8b8e4c2e9571c0db727925d77e1274009175e4f0b0e18cf466b`, tender template `template_267d1d73da73ec990e8711e492bccb9112076051d396922bdef2b9d667c684eb`. The bytes published were the exact esmeralda template bytes. The mainnet network recompiled the code at publish time, so the stored code hashes differ from esmeralda's while the template interface is identical.
+
+The Heartland Provisions Circle is live on mainnet at `component_46237d52379c5d9289814c67ca840f5fa2aad2b12ed2291acf0e74a5091aca71`, three approvers, threshold 2. A season of six tenders ran against it: a plain award, a tie, an override, a dispute, an expiry, and a ten-seller tender. Each one settled or expired and was verified in full by both the standalone script and the app's verifier, with identical readings. The same product ran a seven-tender season on the esmeralda testnet before mainnet.
+
+The web app is live at https://asiri-libg.netlify.app and defaults to mainnet, with an esmeralda switch kept. Its results page carries the esmeralda season's recorded receipts. Every tender on either network can be re-checked with the verifier above.
