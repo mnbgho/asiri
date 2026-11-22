@@ -515,7 +515,7 @@ describe("the discovery pass", () => {
   it("refuses a network with no templates configured before any stream opens", async () => {
     let streams = 0;
     const fake = {
-      cfg: NETWORKS.mainnet,
+      cfg: { ...NETWORKS.mainnet, circleTemplate: null, tenderTemplate: null },
       templateEventComponents: async () => {
         streams++;
         return [];
@@ -681,6 +681,10 @@ async function flush(times = 40): Promise<void> {
 
 describe("overview discovery rendering", () => {
   it("renders watched and featured tenders before discovery completes, then marks the discovered ones", async () => {
+    // The fixtures are the esmeralda featured circle and its
+    // templates, so the app is pinned to esmeralda: mainnet is
+    // the shipped default now.
+    backing.set("asiri:network", "esmeralda");
     backing.set(
       "asiri:watched",
       JSON.stringify({ circles: [], tenders: [T_WATCHED] }),
@@ -745,6 +749,7 @@ describe("overview discovery rendering", () => {
   });
 
   it("shows the cached set at once on a later visit and does not re-read while it is fresh", async () => {
+    backing.set("asiri:network", "esmeralda");
     writeDiscoveryCache("esmeralda", {
       at: Date.now(),
       circles: [C_DISC],
@@ -775,9 +780,10 @@ describe("overview discovery rendering", () => {
     expect(streams).toBe(0);
   });
 
-  it("on mainnet, says there is nothing to discover and opens no stream", async () => {
+  it("on mainnet, discovery runs and reports the empty set it found", async () => {
     backing.set("asiri:network", "mainnet");
     const app = new App();
+    app.indexer.substate = (async () => null) as typeof app.indexer.substate;
     let streams = 0;
     app.indexer.templateEventComponents = (async () => {
       streams++;
@@ -785,12 +791,46 @@ describe("overview discovery rendering", () => {
     }) as typeof app.indexer.templateEventComponents;
     const rootEl = new FakeEl("div");
     await renderOverview(app, rootEl as unknown as HTMLElement, () => {});
-    expect(rootEl.textContent).toContain("there is nothing to discover on mainnet yet");
+    await flush(5);
+    // One stream per template: circles first, then tenders.
+    expect(streams).toBe(2);
+    expect(rootEl.textContent).toContain(
+      "discovery found 0 circles and 0 tenders on this network",
+    );
     expect(rootEl.textContent).toContain("no public tenders are listed on mainnet yet");
-    expect(streams).toBe(0);
+    expect(rootEl.textContent).not.toContain(
+      "there is nothing to discover on mainnet yet",
+    );
+  });
+
+  it("on a network with no templates published, says there is nothing to discover and opens no stream", async () => {
+    // Both shipped networks are configured today, so the
+    // unconfigured case clears the mainnet templates for the
+    // length of the test and restores them after.
+    const savedMainnet = { ...NETWORKS.mainnet };
+    NETWORKS.mainnet.circleTemplate = null;
+    NETWORKS.mainnet.tenderTemplate = null;
+    try {
+      backing.set("asiri:network", "mainnet");
+      const app = new App();
+      app.indexer.substate = (async () => null) as typeof app.indexer.substate;
+      let streams = 0;
+      app.indexer.templateEventComponents = (async () => {
+        streams++;
+        return [];
+      }) as typeof app.indexer.templateEventComponents;
+      const rootEl = new FakeEl("div");
+      await renderOverview(app, rootEl as unknown as HTMLElement, () => {});
+      expect(rootEl.textContent).toContain("there is nothing to discover on mainnet yet");
+      expect(rootEl.textContent).toContain("no public tenders are listed on mainnet yet");
+      expect(streams).toBe(0);
+    } finally {
+      Object.assign(NETWORKS.mainnet, savedMainnet);
+    }
   });
 
   it("falls back to the watched set with a plain note when discovery cannot read the network", async () => {
+    backing.set("asiri:network", "esmeralda");
     const values: Record<string, CborValue | null> = {
       [FEATURED]: circleRoot(CIRCLE_TEMPLATE_HEX, [
         new Tagged(128, B("f1".repeat(32))),

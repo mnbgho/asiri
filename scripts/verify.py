@@ -369,10 +369,10 @@ NETWORKS = {
     "mainnet": {
         "indexer": "https://indexer-a.ootle.tari.com",
         "indexer_fallback": None,
-        "circle_template": None,
-        "tender_template": None,
-        "circle_code_hash": None,
-        "tender_code_hash": None,
+        "circle_template": "template_b86a46241753b8b8e4c2e9571c0db727925d77e1274009175e4f0b0e18cf466b",
+        "tender_template": "template_267d1d73da73ec990e8711e492bccb9112076051d396922bdef2b9d667c684eb",
+        "circle_code_hash": "72c9bb84c7e77b2cdc724a5619aed6dd5c5be71d1bea9eb685b2bab5e0d4609c",
+        "tender_code_hash": "ff672fdced3cccd2c7c7649b4b6107322872ff83d2a347c8a1a30a5461f531e9",
     },
     "esmeralda": {
         "indexer": "https://ootle-indexer-a.tari.com",

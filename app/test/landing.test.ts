@@ -104,7 +104,7 @@ describe("landing at full Section 15A scope", () => {
     const r = await render();
     const verpill = r.querySelectorAll(".verpill");
     expect(verpill).toHaveLength(1);
-    expect(verpill[0].textContent).toContain("esmeralda testnet");
+    expect(verpill[0].textContent).toContain("mainnet");
     const signin = r.querySelectorAll(".signin");
     expect(signin).toHaveLength(1);
     expect(signin[0].textContent).toContain("open the app");

@@ -420,6 +420,11 @@ beforeEach(() => {
 });
 
 async function connectedApp(): Promise<App> {
+  // The mock provider reports esmeralda, so pin the app to
+  // esmeralda: the submit-time guard compares the wallet's
+  // network against the app's, and mainnet is the shipped
+  // default now.
+  backing.set("asiri:network", "esmeralda");
   const app = new App();
   // Poll the fake provider at full speed: riding the production
   // 700 ms poll made these tests take seconds of real time and

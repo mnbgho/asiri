@@ -76,15 +76,64 @@ describe("defaultNetwork", () => {
     expect(defaultNetwork(configs({}, {}))).toBe("mainnet");
   });
 
-  it("reads the live config: esmeralda is the configured network today", () => {
-    expect(templatesConfigured(NETWORKS.mainnet)).toBe(false);
+  it("reads the live config: both networks are configured today", () => {
+    expect(templatesConfigured(NETWORKS.mainnet)).toBe(true);
     expect(templatesConfigured(NETWORKS.esmeralda)).toBe(true);
-    expect(defaultNetwork()).toBe("esmeralda");
+    expect(defaultNetwork()).toBe("mainnet");
+  });
+
+  it("pins the published mainnet values", () => {
+    expect(NETWORKS.mainnet.circleTemplate).toBe(
+      "template_b86a46241753b8b8e4c2e9571c0db727925d77e1274009175e4f0b0e18cf466b",
+    );
+    expect(NETWORKS.mainnet.tenderTemplate).toBe(
+      "template_267d1d73da73ec990e8711e492bccb9112076051d396922bdef2b9d667c684eb",
+    );
+    expect(NETWORKS.mainnet.circleCodeHash).toBe(
+      "72c9bb84c7e77b2cdc724a5619aed6dd5c5be71d1bea9eb685b2bab5e0d4609c",
+    );
+    expect(NETWORKS.mainnet.tenderCodeHash).toBe(
+      "ff672fdced3cccd2c7c7649b4b6107322872ff83d2a347c8a1a30a5461f531e9",
+    );
+    expect(NETWORKS.mainnet.featuredCircle).toBe(
+      "component_46237d52379c5d9289814c67ca840f5fa2aad2b12ed2291acf0e74a5091aca71",
+    );
+    expect(NETWORKS.mainnet.indexer).toBe("https://indexer-a.ootle.tari.com");
   });
 });
 
 describe("app first visit", () => {
-  it("lands on esmeralda with nothing stored, while mainnet is unconfigured", () => {
+  it("lands on mainnet with nothing stored, now that mainnet is configured", () => {
+    const app = new App();
+    expect(app.network).toBe("mainnet");
+    expect(app.indexer.cfg.name).toBe("mainnet");
+  });
+
+  it("keeps a saved esmeralda preference", () => {
+    backing.set("asiri:network", "esmeralda");
+    const app = new App();
+    expect(app.network).toBe("esmeralda");
+  });
+});
+
+// While mainnet is unconfigured the default is esmeralda, so a
+// saved mainnet preference and a garbage stored value can each
+// be told apart from the default: that is what gives the two
+// preference tests below their teeth, which they cannot have
+// against the shipped config where mainnet is the default.
+describe("app first visit while mainnet is unconfigured", () => {
+  const savedMainnet = { ...NETWORKS.mainnet };
+
+  beforeEach(() => {
+    NETWORKS.mainnet.circleTemplate = null;
+    NETWORKS.mainnet.tenderTemplate = null;
+  });
+
+  afterEach(() => {
+    Object.assign(NETWORKS.mainnet, savedMainnet);
+  });
+
+  it("lands on esmeralda with nothing stored", () => {
     const app = new App();
     expect(app.network).toBe("esmeralda");
     expect(app.indexer.cfg.name).toBe("esmeralda");
@@ -94,12 +143,6 @@ describe("app first visit", () => {
     backing.set("asiri:network", "mainnet");
     const app = new App();
     expect(app.network).toBe("mainnet");
-  });
-
-  it("keeps a saved esmeralda preference", () => {
-    backing.set("asiri:network", "esmeralda");
-    const app = new App();
-    expect(app.network).toBe("esmeralda");
   });
 
   it("ignores a stored value that is not a network name", () => {

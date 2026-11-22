@@ -235,6 +235,7 @@ describe("the submit-time network guard", () => {
   it("stops a submit on a mismatched wallet network, before any transaction is created", async () => {
     const mock = new MockProvider("mainnet");
     (globalThis as { window?: unknown }).window = { tari: mock };
+    backing.set("asiri:network", "esmeralda");
     const app = new App();
     await app.wallet.connect();
     await expect(
@@ -271,6 +272,7 @@ describe("the submit-time network guard", () => {
   it("lets a submit proceed when the networks match", async () => {
     const mock = new MockProvider("esmeralda");
     (globalThis as { window?: unknown }).window = { tari: mock };
+    backing.set("asiri:network", "esmeralda");
     const app = new App();
     await app.wallet.connect();
     await expect(app.guardWalletNetwork()).resolves.toBeUndefined();
@@ -311,6 +313,7 @@ describe("balance refresh and disconnect", () => {
     (globalThis as { window?: unknown }).window = {
       tari: new MockProvider("esmeralda"),
     };
+    backing.set("asiri:network", "esmeralda");
     const app = new App();
     await app.wallet.connect();
     let vault = VAULT_1;
@@ -419,6 +422,7 @@ describe("funding guidance", () => {
   });
 
   it("renders on the create screen, where a new user meets the costs", async () => {
+    backing.set("asiri:network", "esmeralda");
     const app = new App();
     const root = new FakeEl("div");
     await renderCreate(app, root as unknown as HTMLElement, () => {});

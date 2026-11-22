@@ -8,7 +8,7 @@
 // screens touch, as in wallet-pack.test.ts. Indexer reads are
 // stubbed on the App instance: these tests cover what renders,
 // not the network.
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { App } from "../src/app";
 import { INBOX_SCOPE_NOTE } from "../src/inbox";
 import { NETWORKS, networkPill } from "../src/indexer";
@@ -99,9 +99,14 @@ const root = () => new FakeEl("div") as unknown as HTMLElement;
 describe("networkPill", () => {
   it("calls a configured network live and an unconfigured one unpublished", () => {
     expect(networkPill(NETWORKS.esmeralda)).toBe("esmeralda testnet · live");
-    expect(networkPill(NETWORKS.mainnet)).toBe(
-      "mainnet · templates not published yet",
-    );
+    expect(networkPill(NETWORKS.mainnet)).toBe("mainnet · live");
+    expect(
+      networkPill({
+        ...NETWORKS.mainnet,
+        circleTemplate: null,
+        tenderTemplate: null,
+      }),
+    ).toBe("mainnet · templates not published yet");
   });
 });
 
@@ -133,6 +138,21 @@ describe("landing copy", () => {
 });
 
 describe("create screen on an unconfigured network", () => {
+  // Both shipped networks are configured today, so the
+  // unconfigured case is exercised by clearing the mainnet
+  // templates for the length of the test, the same mutation
+  // pattern network.test.ts uses.
+  const savedMainnet = { ...NETWORKS.mainnet };
+
+  beforeEach(() => {
+    NETWORKS.mainnet.circleTemplate = null;
+    NETWORKS.mainnet.tenderTemplate = null;
+  });
+
+  afterEach(() => {
+    Object.assign(NETWORKS.mainnet, savedMainnet);
+  });
+
   it("shows the notices and the switch, and no forms", async () => {
     const app = new App();
     app.setNetwork("mainnet");
