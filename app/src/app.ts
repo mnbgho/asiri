@@ -1,0 +1,315 @@
+// Shared app state: the selected network, the wallet, the
+// visitor's own public key (used only to light up the actions
+// they can sign; the templates check the real signature), and
+// the addresses this browser watches.
+import { TARI_TOKEN } from "./args";
+import {
+  calledMethods,
+  confirmAction,
+  UNCONFIRMED,
+  type ActionOutcome,
+  type ConfirmOptions,
+} from "./finalize";
+import { Indexer, NETWORKS, defaultNetwork, type NetworkName } from "./indexer";
+import {
+  decodeAccountOwnerKey,
+  decodeVaultBalance,
+  findAccountVault,
+} from "./state";
+import { Wallet, networkMatch, type Instruction } from "./wallet";
+
+const store = {
+  get(k: string): string | null {
+    try {
+      return localStorage.getItem(`asiri:${k}`);
+    } catch {
+      return null;
+    }
+  },
+  set(k: string, v: string): void {
+    try {
+      localStorage.setItem(`asiri:${k}`, v);
+    } catch {
+      /* private mode: state simply does not persist */
+    }
+  },
+  remove(k: string): void {
+    try {
+      localStorage.removeItem(`asiri:${k}`);
+    } catch {
+      /* private mode: nothing was persisted */
+    }
+  },
+};
+
+export class App {
+  network: NetworkName;
+  indexer: Indexer;
+  wallet = new Wallet();
+  myKey: string | null;
+  balance: bigint | null = null;
+  // A one-shot note the next rendered screen shows above its
+  // content: how a just-submitted transaction actually stands.
+  flash: { text: string; txId: string | null } | null = null;
+  private identityAccount: string | null = null;
+
+  constructor() {
+    // A saved preference always wins. A first visit lands on the
+    // first network with templates configured, so it never opens
+    // on a network with nothing live to show.
+    const saved = store.get("network");
+    this.network =
+      saved === "esmeralda" || saved === "mainnet" ? saved : defaultNetwork();
+    this.indexer = new Indexer(NETWORKS[this.network]);
+    this.myKey = store.get("mykey");
+  }
+
+  setNetwork(n: NetworkName): void {
+    this.network = n;
+    this.indexer = new Indexer(NETWORKS[n]);
+    store.set("network", n);
+    // The derived balance belongs to the old network's account
+    // state; never present it as the new network's balance.
+    this.balance = null;
+    this.identityAccount = null;
+  }
+
+  setMyKey(k: string | null): void {
+    this.myKey = k;
+    if (k) store.set("mykey", k);
+  }
+
+  /**
+   * Stop a submit before it starts when the wallet is on a
+   * different network from the one the app is showing. Without
+   * this, the transaction is built for the app's network and
+   * the wallet's network rejects or strands it, and the user
+   * learns nothing. The wallet's network is re-read fresh: the
+   * value from connect time goes stale when the user switches
+   * inside the wallet. A wallet whose network cannot be read
+   * at all is unverified, and the submit stops too: trusting
+   * the stale connect-time record in that case would let a
+   * write through on a network nobody checked.
+   */
+  async guardWalletNetwork(): Promise<void> {
+    if (!this.wallet.account) return;
+    const net = await this.wallet.refreshNetwork();
+    if (net === null) {
+      throw new Error(
+        "your wallet's network could not be checked, so nothing was submitted. reconnect your wallet and try again.",
+      );
+    }
+    if (networkMatch(net, this.network) === "mismatch") {
+      throw new Error(
+        `your wallet is on ${net}, but the app is set to ${NETWORKS[this.network].label}. switch the network in your wallet, or switch the app's network, then try again.`,
+      );
+    }
+  }
+
+  /**
+   * Disconnect the wallet and clear every piece of state the
+   * app derived from that account: the balance, the derived
+   * public key (in memory and in storage), and the record of
+   * which account the identity belongs to. Watched addresses
+   * and saved bids stay: they name chain records and this
+   * browser's own bids, not the account's identity.
+   */
+  disconnect(): void {
+    this.wallet.disconnect();
+    this.balance = null;
+    this.myKey = null;
+    this.identityAccount = null;
+    store.remove("mykey");
+  }
+
+  /**
+   * Derive the connected visitor's public key and TARI balance
+   * from their account state on the indexer, so no flow ever has
+   * to ask them to paste a key. The derived key belongs to the
+   * connected account only: when the account context changes, the
+   * previous account's key and balance are cleared first, and the
+   * derived key always replaces whatever key was stored before.
+   * Best effort: a failed read leaves the cleared state rather
+   * than another account's identity, and never blocks the
+   * connection.
+   */
+  async deriveIdentity(): Promise<void> {
+    const account = this.wallet.account;
+    if (!account) return;
+    if (this.identityAccount !== account) {
+      this.myKey = null;
+      this.balance = null;
+      this.identityAccount = account;
+    }
+    try {
+      const sub = await this.indexer.substate(account);
+      if (!sub) return;
+      this.setMyKey(decodeAccountOwnerKey(sub.value));
+      const vault = findAccountVault(sub.value, TARI_TOKEN);
+      if (vault) {
+        const vsub = await this.indexer.substate(vault);
+        if (vsub) this.balance = decodeVaultBalance(vsub.value);
+      }
+    } catch {
+      /* identity derivation is best effort */
+    }
+  }
+
+  /**
+   * The transaction ids a component's event feed already
+   * holds, read with a short leash: this snapshot is what lets
+   * the confirmation tell the action's own transaction apart
+   * from everything before it, so a snapshot that cannot be
+   * read in time means no confirmation is attempted at all.
+   */
+  private async snapshotTxIds(component: string): Promise<Set<string> | null> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const events = await Promise.race([
+        this.indexer.events(component),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("snapshot timed out")), 5000);
+        }),
+      ]);
+      return new Set(events.map((e) => e.txId).filter(Boolean));
+    } catch {
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Submit one action and report how it actually ended. The
+   * wallet's "submitted" is not an ending: the transaction can
+   * still fail at finalization, and the failure is invisible
+   * unless someone reads the finalize result. This snapshots
+   * the target component's event feed, submits through the
+   * wallet, then confirms the outcome from the indexer (see
+   * finalize.ts). Actions with no component to watch (template
+   * creates) come back unconfirmed; their callers confirm from
+   * the created component itself.
+   */
+  async submitAction(
+    instructions: Instruction[],
+    maxFeeMicroTari = 2_000_000,
+    confirmOpts?: ConfirmOptions,
+  ): Promise<{ result: unknown; outcome: ActionOutcome }> {
+    await this.guardWalletNetwork();
+    const calls = calledMethods(instructions);
+    if (this.wallet.account) calls.delete(this.wallet.account);
+    const watch = [...calls.keys()][0];
+    const before = watch ? await this.snapshotTxIds(watch) : null;
+    const { result } = await this.wallet.submit(instructions, maxFeeMicroTari);
+    if (!watch || !before) {
+      await this.deriveIdentity();
+      return { result, outcome: UNCONFIRMED };
+    }
+    const outcome = await confirmAction(this.indexer, watch, calls.get(watch)!, before, {
+      ...confirmOpts,
+      // The derived key is what seals this account's
+      // transactions, so it can tell the action's own
+      // transaction apart from another actor's identical call.
+      // When identity derivation failed it stays null and the
+      // confirmation matches on component and method alone.
+      signer: this.myKey,
+    });
+    // The action moved money, even when it only paid a fee:
+    // re-derive the balance so the wallet card never keeps
+    // showing the figure from before the action.
+    await this.deriveIdentity();
+    return { result, outcome };
+  }
+
+  watched(): { circles: string[]; tenders: string[] } {
+    try {
+      const raw = JSON.parse(store.get("watched") ?? "{}") as {
+        circles?: unknown;
+        tenders?: unknown;
+      };
+      const list = (v: unknown): string[] =>
+        Array.isArray(v)
+          ? v.filter((a): a is string => typeof a === "string")
+          : [];
+      return { circles: list(raw.circles), tenders: list(raw.tenders) };
+    } catch {
+      return { circles: [], tenders: [] };
+    }
+  }
+
+  watch(kind: "circles" | "tenders", address: string): void {
+    const w = this.watched();
+    const list = (w[kind] ??= []);
+    if (!list.includes(address)) list.push(address);
+    store.set("watched", JSON.stringify(w));
+  }
+}
+
+/** µT to a TARI display string, trailing zeros trimmed. */
+export function tari(ut: bigint): string {
+  const whole = ut / 1_000_000n;
+  const frac = (ut % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : `${whole}`;
+}
+
+/** Parse a TARI amount typed by the user into µT. */
+export function parseTari(s: string): bigint {
+  const m = s.trim().match(/^(\d+)(?:\.(\d{1,6}))?$/);
+  if (!m) throw new Error("enter an amount like 5 or 0.25");
+  return BigInt(m[1]) * 1_000_000n + BigInt((m[2] ?? "").padEnd(6, "0") || "0");
+}
+
+export function short(address: string): string {
+  if (address.length <= 22) return address;
+  return `${address.slice(0, 14)}…${address.slice(-6)}`;
+}
+
+export function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  cls?: string,
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+/**
+ * Remove every error banner under a screen's root. A screen
+ * shows its latest error only: repeated failures replace the
+ * banner instead of stacking copies of it down the page.
+ */
+export function clearErrors(root: HTMLElement): void {
+  if (typeof root.querySelectorAll !== "function") return;
+  root.querySelectorAll(".err").forEach((n) => n.remove());
+}
+
+export function errorBox(root: HTMLElement, err: unknown): void {
+  clearErrors(root);
+  const box = el("div", "err", err instanceof Error ? err.message : String(err));
+  // An error is announced, not just shown: role alert makes a
+  // screen reader speak it when it appears.
+  setAria(box, "role", "alert");
+  root.prepend(box);
+}
+
+/**
+ * Set an ARIA attribute on a node. Guarded because the unit
+ * tests render the screens against a small fake DOM that
+ * implements only the surface the screens otherwise touch:
+ * attribute setting must never become a render dependency.
+ */
+export function setAria(node: HTMLElement, name: string, value: string): void {
+  if (typeof node.setAttribute === "function") node.setAttribute(name, value);
+}
+
+export function explorerLink(app: App, kind: "tx" | "component", id: string): HTMLAnchorElement {
+  const a = el("a", undefined, short(id));
+  a.href =
+    kind === "tx" ? app.indexer.explorerTx(id) : app.indexer.explorerComponent(id);
+  a.target = "_blank";
+  a.rel = "noreferrer";
+  a.className = "hash";
+  return a;
+}

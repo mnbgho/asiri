@@ -1,0 +1,8 @@
+[package]
+name = "asiri-types"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tari_template_lib_types = "0.39"
+minicbor = { version = "2.2", default-features = false, features = ["alloc", "derive"] }
