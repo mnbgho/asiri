@@ -7,11 +7,16 @@
 // can prove, and every figure is read from the chain or
 // recomputed from its record: the feed reads the featured
 // circle live, the stat card's number comes from the
-// zero-extraction ledger data, and the rig panel's two
-// record attacks quote the falsification cards' own
-// rejection rows.
+// zero-extraction ledger data, and the rig panel's answers
+// quote the mainnet attack tender's record: the chain's own
+// rejections, with the transactions that carry them.
 import { App, el, setAria } from "../app";
-import { FALSIFICATION_CARDS } from "../falsification-data";
+import {
+  MAINNET_ATTACK_OVERRIDE,
+  MAINNET_ATTACK_SEALED_BID,
+  MAINNET_ATTACKS,
+  type MainnetAttack,
+} from "../mainnet-attack-data";
 import { LEDGER } from "../proof-data";
 import { decodeCircleState, decodeTenderState } from "../state";
 import { BUILDER_RUN_LABEL, money } from "./common";
@@ -24,64 +29,80 @@ export interface RigAnswer {
   source: string;
 }
 
-function cardRejection(
-  cardId: string,
-  pick: number,
-): { check: string; detail: string; title: string } {
-  const card = FALSIFICATION_CARDS.find((c) => c.id === cardId);
-  if (!card) throw new Error(`falsification card missing: ${cardId}`);
-  const r = card.rejections.standalone[pick];
-  if (!r) throw new Error(`falsification rejection missing: ${cardId}`);
-  return { check: r.check, detail: r.detail, title: card.title };
+function attackByKey(key: string): MainnetAttack {
+  const a = MAINNET_ATTACKS.find((x) => x.key === key);
+  if (!a) throw new Error(`attack missing: ${key}`);
+  return a;
 }
 
-// The four attacks, answered from the record. Two are
-// impossible by construction: the template has no method
-// for them, which is a fact about the published template,
-// stated as such. Two are lies about a real tender's
-// record, answered with the exact check both verifiers
-// failed the tampered copy at, quoted from the
-// falsification cards. Nothing here claims an attempt was
-// made on chain: the panel shows the attempt and why it
-// cannot stand, which is all the evidence that exists.
+// The four attacks, answered from the live mainnet attack
+// record. Peeking is impossible by construction: the
+// template has no method for it, which is a fact about the
+// published template, stated as such, and the attack
+// tender's unrevealed bid now shows the construction
+// holding on mainnet. The other three were attempted on
+// mainnet, against the attack tender inside its own
+// windows, and the answers quote the chain's own
+// rejections and the transactions that carry them, from
+// mainnet-attack-data.ts. The falsification cards still
+// sit on the results page, answering the different
+// question of what happens when a record is tampered with
+// after the fact.
 export function rigAnswer(kind: RigKind): RigAnswer {
   switch (kind) {
-    case "peek":
+    case "peek": {
+      const s = MAINNET_ATTACK_SEALED_BID;
       return {
         call: "> call: read the price inside a sealed commitment",
         rejected: [
           "rejected · there is no method to call. a commitment is a hash of the price, a salt only the seller holds, and the seller's payment identity. the only opening is the owner's own reveal, inside the reveal window.",
+          `observed on mainnet · on the attack tender, ${s.by}'s ${money(BigInt(s.priceMicro))} bid was committed and never revealed. the tender settled around it and both verifiers passed it in full, and its price never entered the record. the bid stayed sealed, and its bond forfeited on the recorded split.`,
         ],
-        source: "impossible by construction: no method returns a price before its owner reveals it, to anyone, the buyer included.",
+        source: "impossible by construction, and observed live on mainnet: the attack tender's unrevealed bid ended the tender still sealed. its record is on the results page.",
       };
-    case "rules":
+    }
+    case "rules": {
+      const a = attackByKey("update-rules");
       return {
-        call: "> call: set the budget cap again, after the tender has locked",
+        call: "> call: update_rules, to set the budget cap again after the tender has locked",
         rejected: [
           "rejected · the rules are hashed and frozen at lock and fund, and there is no setter on a locked tender. both verifiers recompute the rules hash from the record on every run, so an edited record fails its first check.",
+          `rejected · ${a.rejection}. the chain's own words on transaction ${a.tx}: the operator's update_rules call after the lock, refused on mainnet.`,
         ],
-        source: "impossible by construction, and rechecked on every verification run.",
+        source: "impossible by construction, and refused live on mainnet: the attack tender's record is on the results page.",
       };
+    }
     case "friend": {
-      const r = cardRejection("winner-swapped", 1);
+      const zero = attackByKey("override-zero-rationale");
+      const unrevealed = attackByKey("override-unrevealed");
+      const o = MAINNET_ATTACK_OVERRIDE;
       return {
-        call: "> tamper: put a different seller's name on the gate tender's award record",
+        call: "> call: override the award to a friendlier seller",
         rejected: [
           "the one legal path is an override: a published rationale whose hash sits in the record, and approver signatures at the circle's threshold. below that bar, no override stands and the computed award is the one that settles.",
-          `rejected · ${r.check}: ${r.detail}`,
+          `rejected · ${zero.rejection}. transaction ${zero.tx}: an override proposal with an all-zero rationale hash, refused on mainnet.`,
+          `rejected · ${unrevealed.rejection}. transaction ${unrevealed.tx}: an override proposal choosing a bid nobody revealed, refused on mainnet.`,
+          `not enough signatures: an override for ${o.chosenAccount} was proposed (transaction ${o.proposeTx}) and signed by one approver (transaction ${o.signTx}), below the threshold of ${o.threshold}. a live read straight after showed the award unchanged, still ${o.awardWinner}, with no override recorded.`,
+          "and there is no award method to call instead: the tender template's method list has none. the winner is computed inside close_reveal.",
         ],
-        source: `from the falsification cards: "${r.title}", a tampered copy of the real gate tender record. both verifiers reject it at that check.`,
+        source: "live on mainnet: the attack tender's override attempts are on the results page.",
       };
     }
     case "money": {
-      const r = cardRejection("escrow-balance-inflated", 0);
+      const loser = attackByKey("claim-payment-loser");
+      const bond = attackByKey("claim-bond-nonbidder");
+      const twice = attackByKey("claim-payment-twice");
+      const refund = attackByKey("release-refund-direct");
       return {
-        call: "> tamper: write the gate tender's escrow record as if 5 tari never moved",
+        call: "> call: take the escrow out of the tender",
         rejected: [
           "escrow leaves only through the template's own settlement paths: paying the winner after delivery, resolving a dispute, or refunding the circle. there is no withdrawal method to call.",
-          `rejected · ${r.check}: ${r.detail}`,
+          `rejected · ${loser.rejection}. transaction ${loser.tx}: the loser's claim on the payment, refused on mainnet.`,
+          `rejected · ${bond.rejection}. transaction ${bond.tx}: a bond claim from an account that never bid, refused on mainnet.`,
+          `rejected · ${twice.rejection}. transaction ${twice.tx}: the winner's second claim on the payment, refused on mainnet.`,
+          `rejected · ${refund.rejection}. transaction ${refund.tx}: a direct release_refund call on the tender itself, refused by the component's own access rules.`,
         ],
-        source: `from the falsification cards: "${r.title}", a tampered copy of the real gate tender record. both verifiers reject it at that check.`,
+        source: "live on mainnet: the attack tender's claim attempts are on the results page.",
       };
     }
   }

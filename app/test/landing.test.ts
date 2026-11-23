@@ -7,7 +7,10 @@
 // renders and what the rig answers quote, not the network.
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../src/app";
-import { FALSIFICATION_CARDS } from "../src/falsification-data";
+import {
+  MAINNET_ATTACK_OVERRIDE,
+  MAINNET_ATTACKS,
+} from "../src/mainnet-attack-data";
 import { LEDGER } from "../src/proof-data";
 import { renderLanding, rigAnswer } from "../src/screens/landing";
 
@@ -160,34 +163,51 @@ describe("landing at full Section 15A scope", () => {
     expect(titles[4]).toContain("deliver, then settle");
   });
 
-  it("answers the record attacks with the falsification cards' own rows", () => {
-    const swapped = FALSIFICATION_CARDS.find((c) => c.id === "winner-swapped");
-    const escrow = FALSIFICATION_CARDS.find(
-      (c) => c.id === "escrow-balance-inflated",
-    );
-    expect(swapped).toBeDefined();
-    expect(escrow).toBeDefined();
+  it("answers the rig attacks with the live mainnet attack record", () => {
+    const byKey = new Map(MAINNET_ATTACKS.map((a) => [a.key, a]));
     const friend = rigAnswer("friend");
-    expect(friend.rejected.join(" ")).toContain(
-      swapped!.rejections.standalone[1].detail,
+    const joined = friend.rejected.join(" ");
+    expect(joined).toContain(
+      byKey.get("override-zero-rationale")!.rejection,
     );
-    expect(friend.source).toContain(swapped!.title);
+    expect(joined).toContain(byKey.get("override-zero-rationale")!.tx);
+    expect(joined).toContain(
+      byKey.get("override-unrevealed")!.rejection,
+    );
+    expect(joined).toContain(MAINNET_ATTACK_OVERRIDE.proposeTx);
+    expect(joined).toContain(MAINNET_ATTACK_OVERRIDE.signTx);
+    expect(joined).toContain("no award method to call");
+    expect(friend.source).toContain("live on mainnet");
     const money = rigAnswer("money");
-    expect(money.rejected.join(" ")).toContain(
-      escrow!.rejections.standalone[0].detail,
-    );
-    expect(money.source).toContain(escrow!.title);
+    const mJoined = money.rejected.join(" ");
+    for (const k of [
+      "claim-payment-loser",
+      "claim-bond-nonbidder",
+      "claim-payment-twice",
+      "release-refund-direct",
+    ]) {
+      expect(mJoined).toContain(byKey.get(k)!.rejection);
+      expect(mJoined).toContain(byKey.get(k)!.tx);
+    }
+    expect(money.source).toContain("live on mainnet");
   });
 
-  it("answers the construction attacks without inventing an on-chain attempt", () => {
+  it("answers the construction attacks, with the live record behind them", () => {
     const peek = rigAnswer("peek");
     expect(peek.rejected.join(" ")).toContain("there is no method to call");
+    expect(peek.rejected.join(" ")).toContain("stayed sealed");
     expect(peek.source).toContain("by construction");
+    // Peeking still quotes no transaction: there is no
+    // attempt to quote, only the unrevealed bid's outcome.
+    expect(peek.call + peek.rejected.join(" ") + peek.source).not.toMatch(
+      /transaction [0-9a-f]{64}/,
+    );
     const rules = rigAnswer("rules");
     expect(rules.rejected.join(" ")).toContain("no setter on a locked tender");
-    for (const a of [peek, rules]) {
-      expect(a.call + a.rejected.join(" ") + a.source).not.toMatch(/tx [0-9a-f]/);
-    }
+    const upd = MAINNET_ATTACKS.find((a) => a.key === "update-rules")!;
+    expect(rules.rejected.join(" ")).toContain(upd.rejection);
+    expect(rules.rejected.join(" ")).toContain(upd.tx);
+    expect(rules.source).toContain("refused live on mainnet");
   });
 
   it("renders the rig console waiting, with all four attack buttons", async () => {

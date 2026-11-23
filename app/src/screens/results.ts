@@ -5,7 +5,11 @@
 // mainnet-results-data.ts, with both verifiers' counts, and
 // under each tender the standalone verifier's own receipt
 // for it, its check rows and the file itself, from
-// mainnet-receipts-data.ts. On esmeralda it shows the
+// mainnet-receipts-data.ts. A seventh mainnet tender, the
+// attack test, follows the season records: its structured
+// record and the record of the eighteen attacks the chain
+// rejected inside its windows, from mainnet-attack-data.ts,
+// with its receipt like the others. On esmeralda it shows the
 // esmeralda record below, unchanged: the rows in
 // results-data.ts are the standalone verifier's own output,
 // captured on the date shown, never retyped, and any tender
@@ -31,11 +35,21 @@ import {
   type FalsificationRejection,
 } from "../falsification-data";
 import {
+  MAINNET_ATTACK_DUPLICATES,
+  MAINNET_ATTACK_OVERRIDE,
+  MAINNET_ATTACK_RECORD,
+  MAINNET_ATTACK_SEALED_BID,
+  MAINNET_ATTACKS,
+  type MainnetAttack,
+} from "../mainnet-attack-data";
+import {
   MAINNET_TENDER_RECEIPTS,
+  type MainnetTenderReceipt,
 } from "../mainnet-receipts-data";
 import {
   MAINNET_RESULTS_META,
   MAINNET_TENDER_RECORDS,
+  type MainnetTenderRecord,
 } from "../mainnet-results-data";
 import { EXCEPTION_INVOICE, LEDGER } from "../proof-data";
 import { TENDER_RECEIPTS, TenderReceipt } from "../receipts-data";
@@ -82,14 +96,14 @@ function renderMainnetResults(
   const intro = box("verification results", "tari mainnet");
   intro.body.append(
     notice(
-      "these are tari mainnet records. six tenders ran on mainnet against the heartland provisions circle, and both verifiers, the standalone script and the app's own verifier, read each tender from the public indexer and passed it in full with identical readings. open any tender in the verify screen to re-run the same checks live in your browser.",
+      "these are tari mainnet records. seven tenders ran on mainnet against the heartland provisions circle: the six season tenders, and a seventh built to be attacked, which was attacked in its own windows and finished honestly. both verifiers, the standalone script and the app's own verifier, read each tender from the public indexer and passed it in full with identical readings. open any tender in the verify screen to re-run the same checks live in your browser.",
     ),
     notice(
-      "the records below carry the season's structured facts: addresses, epochs, amounts, fees, and the two verifiers' counts. under each record sits that tender's receipt: the standalone verifier's own output from a live run against the public mainnet indexer, its check rows shown in full and the file itself offered as a download, byte for byte. the command printed under each record reproduces the receipt from a clean checkout of the repo.",
+      "the records below carry their structured facts: addresses, epochs, amounts, fees, and the two verifiers' counts. under each record sits that tender's receipt: the standalone verifier's own output from a live run against the public mainnet indexer, its check rows shown in full and the file itself offered as a download, byte for byte. the command printed under each record reproduces the receipt from a clean checkout of the repo.",
     ),
   );
   kvNode(intro.body, "circle", explorerLink(app, "component", meta.circle));
-  kv(intro.body, "network fees, six tenders", micro(meta.totalFeesMicro));
+  kv(intro.body, "network fees, six season tenders", micro(meta.totalFeesMicro));
   wrap.append(intro.box);
 
   const receiptByTender = new Map(
@@ -97,6 +111,31 @@ function renderMainnetResults(
   );
 
   for (const t of MAINNET_TENDER_RECORDS) {
+    const b = renderMainnetRecord(
+      app,
+      go,
+      t,
+      receiptByTender.get(t.tender),
+    );
+    wrap.append(b.box);
+  }
+
+  const attackBox = renderMainnetRecord(
+    app,
+    go,
+    MAINNET_ATTACK_RECORD,
+    receiptByTender.get(MAINNET_ATTACK_RECORD.tender),
+  );
+  renderMainnetAttacks(attackBox.body);
+  wrap.append(attackBox.box);
+}
+
+function renderMainnetRecord(
+  app: App,
+  go: (hash: string) => void,
+  t: MainnetTenderRecord,
+  receipt: MainnetTenderReceipt | undefined,
+): { box: HTMLElement; body: HTMLElement } {
     const b = box(t.title, t.state);
     kvNode(b.body, "tender", explorerLink(app, "component", t.tender));
     kv(
@@ -104,7 +143,6 @@ function renderMainnetResults(
       "result",
       `${t.standalonePass} of ${t.standaloneTotal} checks passed in the standalone verifier, ${t.appPass} of ${t.appTotal} in the app verifier`,
     );
-    const receipt = receiptByTender.get(t.tender);
     if (receipt) {
       for (const row of receipt.checks) {
         const state = row.ok === null ? " unknown" : row.ok ? "" : " fail";
@@ -191,7 +229,7 @@ function renderMainnetResults(
       el(
         "span",
         "hash",
-        `python3 scripts/verify.py ${t.tender} --network ${meta.network}`,
+        `python3 scripts/verify.py ${t.tender} --network ${MAINNET_RESULTS_META.network}`,
       ),
     );
     b.body.append(cmd);
@@ -228,8 +266,58 @@ function renderMainnetResults(
       );
       b.body.append(dl);
     }
-    wrap.append(b.box);
+    return b;
+}
+
+function attackRow(a: MainnetAttack): HTMLElement {
+  const row = el("div", "check-row fail");
+  row.append(el("span", "tick", "!"));
+  const text = el("div");
+  text.append(
+    el("div", undefined, a.name),
+    el("div", "detail", `rejected · ${a.rejection}`),
+    el(
+      "div",
+      "detail",
+      (a.actor ? `by ${a.actor} · ` : "") +
+        `transaction ${a.tx} · fee ${micro(a.feeMicro)}`,
+    ),
+  );
+  row.append(text);
+  return row;
+}
+
+function renderMainnetAttacks(body: HTMLElement): void {
+  body.append(el("h3", "mt", "the attacks: eighteen, all rejected"));
+  body.append(
+    notice(
+      "every attack below is an ordinary call to this tender's template from the circle's own accounts, with wrong inputs, wrong timing, or the wrong actor. the chain rejected each one and kept the fee. the tender then finished honestly, as the record above shows.",
+    ),
+  );
+  for (const a of MAINNET_ATTACKS) {
+    body.append(attackRow(a));
   }
+  const dupNames = MAINNET_ATTACK_DUPLICATES.map((d) => {
+    const orig = MAINNET_ATTACKS.find((a) => a.key === d.key);
+    return `${orig ? orig.name : d.key} (transaction ${d.tx})`;
+  });
+  body.append(
+    notice(
+      `two of these attacks were submitted a second time when the runner's start command was retried by the transport: ${dupNames.join(" and ")}. each duplicate was rejected with the same message, and no state changed: every submission in that window was a rejection.`,
+    ),
+  );
+  const o = MAINNET_ATTACK_OVERRIDE;
+  body.append(
+    notice(
+      `one override was not rejected, and did not stand: an override for ${o.chosenAccount} was proposed (transaction ${o.proposeTx}) and signed by one approver, ${o.signer} (transaction ${o.signTx}). one signature is below the circle's threshold of ${o.threshold}, and a live read straight after showed the award unchanged, still ${o.awardWinner}, with no override recorded.`,
+    ),
+  );
+  const s = MAINNET_ATTACK_SEALED_BID;
+  body.append(
+    notice(
+      `one bid stayed sealed to the end: ${s.by}'s ${money(BigInt(s.priceMicro))} bid was committed and never revealed. it could not win, its price never entered the record, and its bond forfeited on the recorded split, half to the circle and half locked in the tender.`,
+    ),
+  );
 }
 
 export async function renderResults(

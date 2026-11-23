@@ -3,6 +3,13 @@ import { App } from "../src/app";
 import { bytesToHex } from "../src/cbor";
 import { sha256 } from "../src/hash";
 import {
+  MAINNET_ATTACK_DUPLICATES,
+  MAINNET_ATTACK_OVERRIDE,
+  MAINNET_ATTACK_RECORD,
+  MAINNET_ATTACK_SEALED_BID,
+  MAINNET_ATTACKS,
+} from "../src/mainnet-attack-data";
+import {
   MAINNET_TENDER_RECEIPTS,
 } from "../src/mainnet-receipts-data";
 import {
@@ -99,8 +106,8 @@ describe("mainnet results data", () => {
 // tests do: a generation that drops a receipt, mislabels its
 // provenance, or drifts a number must fail here.
 describe("mainnet receipts", () => {
-  it("carries one receipt for every mainnet record, in order", () => {
-    expect(MAINNET_TENDER_RECEIPTS).toHaveLength(6);
+  it("carries one receipt for every mainnet record, in order, plus the attack tender's", () => {
+    expect(MAINNET_TENDER_RECEIPTS).toHaveLength(7);
     expect(MAINNET_TENDER_RECEIPTS.map((r) => r.key)).toEqual([
       "gate",
       "tie",
@@ -108,6 +115,7 @@ describe("mainnet receipts", () => {
       "dispute",
       "expiry",
       "scale",
+      "attack",
     ]);
     const byTender = new Map(
       MAINNET_TENDER_RECEIPTS.map((r) => [r.tender, r]),
@@ -115,6 +123,7 @@ describe("mainnet receipts", () => {
     for (const t of MAINNET_TENDER_RECORDS) {
       expect(byTender.has(t.tender)).toBe(true);
     }
+    expect(byTender.has(MAINNET_ATTACK_RECORD.tender)).toBe(true);
   });
 
   it("the json is the receipt file itself, hash and all", async () => {
@@ -144,6 +153,7 @@ describe("mainnet receipts", () => {
       dispute: 13,
       expiry: 10,
       scale: 13,
+      attack: 13,
     };
     for (const r of MAINNET_TENDER_RECEIPTS) {
       expect(r.pass).toBe(expected[r.key]);
@@ -178,6 +188,124 @@ describe("mainnet receipts", () => {
     expect(parsed.override.rationale_text_check).toContain(
       "the supplied text hashes to the recorded rationale hash",
     );
+  });
+});
+
+// The attack tender's data is generated from the evidence
+// record's attack section, cross-checked against the
+// tender's receipt. These tests guard the record's shape:
+// eighteen attacks, the fees the record's own sums demand,
+// and no invented actors where the record names none.
+describe("mainnet attack data", () => {
+  it("the attack record closes its escrow identity and matches its receipt", () => {
+    const t = MAINNET_ATTACK_RECORD;
+    expect(t.key).toBe("attack");
+    expect(t.state).toBe("settled");
+    expect((t.paidMicro ?? 0) + t.refundMicro).toBe(t.capMicro);
+    expect(t.paidMicro).toBe(15_000_000);
+    expect(t.paidTo).toBe("seller1");
+    expect(t.closedEpoch).toBe(39256);
+    expect(t.commitments).toBe(3);
+    expect(t.reveals).toBe(2);
+    expect(t.standalonePass).toBe(13);
+    expect(t.appPass).toBe(13);
+    const receipt = MAINNET_TENDER_RECEIPTS.find(
+      (r) => r.key === "attack",
+    )!;
+    expect(receipt.tender).toBe(t.tender);
+    expect(receipt.sha256).toBe(
+      "128a855fa956b4c30f90a09a44ea3c6b5ad8fb5841cecc6bb429098757c00526",
+    );
+  });
+
+  it("carries eighteen attacks with unique transactions and verbatim rejections", () => {
+    expect(MAINNET_ATTACKS).toHaveLength(18);
+    expect(new Set(MAINNET_ATTACKS.map((a) => a.key)).size).toBe(18);
+    expect(new Set(MAINNET_ATTACKS.map((a) => a.tx)).size).toBe(18);
+    for (const a of MAINNET_ATTACKS) {
+      expect(a.tx).toMatch(/^[0-9a-f]{64}$/);
+      expect(a.name.length).toBeGreaterThan(0);
+      expect(a.rejection.length).toBeGreaterThan(0);
+      expect(a.feeMicro).toBeGreaterThan(0);
+    }
+    const byKey = new Map(MAINNET_ATTACKS.map((a) => [a.key, a]));
+    expect(byKey.get("duplicate-commit")!.rejection).toBe(
+      "seller has already committed in this tender",
+    );
+    expect(byKey.get("update-rules")!.rejection).toBe(
+      "tender is not a draft",
+    );
+    expect(byKey.get("override-unrevealed")!.rejection).toBe(
+      "an override can only choose a valid revealed bid",
+    );
+    expect(byKey.get("claim-payment-twice")!.rejection).toBe(
+      "payment already claimed",
+    );
+    // The four commitment-mismatch reveals carry the one
+    // quoted reason the record gives for all of them.
+    for (const k of [
+      "wrong-salt",
+      "wrong-price",
+      "wrong-identity",
+      "uncommitted-reveal",
+      "double-reveal",
+    ]) {
+      expect(byKey.get(k)!.rejection).toBe(
+        "no matching commitment for this reveal",
+      );
+    }
+  });
+
+  it("names an actor only where the record names one", () => {
+    const nullActors = MAINNET_ATTACKS.filter(
+      (a) => a.actor === null,
+    ).map((a) => a.key);
+    expect(nullActors).toEqual([
+      "double-reveal",
+      "early-close-reveal",
+      "early-advance-delivery",
+      "override-zero-rationale",
+      "override-unrevealed",
+    ]);
+    const byKey = new Map(MAINNET_ATTACKS.map((a) => [a.key, a]));
+    expect(byKey.get("update-rules")!.actor).toBe("operator");
+    expect(byKey.get("uncommitted-reveal")!.actor).toBe("second");
+    expect(byKey.get("collect-forfeits-twice")!.actor).toBe(
+      "the circle",
+    );
+  });
+
+  it("the attack fees are the record's own sums", () => {
+    const attacks = MAINNET_ATTACKS.reduce(
+      (a, x) => a + x.feeMicro,
+      0,
+    );
+    expect(attacks).toBe(55_811);
+    const dups = MAINNET_ATTACK_DUPLICATES.reduce(
+      (a, x) => a + x.feeMicro,
+      0,
+    );
+    expect(dups).toBe(6_257);
+    expect(MAINNET_ATTACK_DUPLICATES.map((d) => d.key)).toEqual([
+      "small-bond",
+      "update-rules",
+    ]);
+    expect(MAINNET_ATTACK_RECORD.feesMicro).toBe(168_965);
+  });
+
+  it("the below-threshold override is carried as an observation, not an attack", () => {
+    const o = MAINNET_ATTACK_OVERRIDE;
+    expect(o.chosenAccount).toBe("seller2");
+    expect(o.signer).toBe("operator");
+    expect(o.signatures).toBe(1);
+    expect(o.threshold).toBe(2);
+    expect(o.awardWinner).toBe("seller1");
+    expect(o.proposeTx).toMatch(/^[0-9a-f]{64}$/);
+    expect(o.signTx).toMatch(/^[0-9a-f]{64}$/);
+    expect(MAINNET_ATTACK_SEALED_BID).toEqual({
+      by: "third",
+      priceMicro: 12_000_000,
+    });
   });
 });
 
@@ -259,7 +387,7 @@ beforeEach(() => {
 });
 
 describe("mainnet results screen", () => {
-  it("renders the six mainnet records on the mainnet view, and not the esmeralda sections", async () => {
+  it("renders the mainnet records on the mainnet view, and not the esmeralda sections", async () => {
     const app = new App();
     expect(app.network).toBe("mainnet");
     const r = new FakeEl("div") as unknown as HTMLElement;
@@ -295,6 +423,31 @@ describe("mainnet results screen", () => {
     );
     expect(t).toContain("download the receipt (json)");
     expect(t).not.toContain("they do not include a receipt download");
+    // The seventh tender: the attack test, its receipt, and
+    // the attack record with the chain's own rejections.
+    expect(t).toContain("seven tenders ran on mainnet");
+    expect(t).toContain("the attack tender");
+    expect(t).toContain(
+      `python3 scripts/verify.py ${MAINNET_ATTACK_RECORD.tender} --network mainnet`,
+    );
+    expect(t).toContain(
+      "receipt sha256: 128a855fa956b4c30f90a09a44ea3c6b5ad8fb5841cecc6bb429098757c00526",
+    );
+    expect(t).toContain("the attacks: eighteen, all rejected");
+    expect(t).toContain(
+      "rejected · seller has already committed in this tender",
+    );
+    expect(t).toContain(
+      "rejected · an override can only choose a valid revealed bid",
+    );
+    expect(t).toContain("rejected · payment already claimed");
+    expect(t).toContain(
+      "one signature is below the circle's threshold of 2",
+    );
+    expect(t).toContain("still seller1, with no override recorded");
+    expect(t).toContain(
+      "third's 12 tari bid was committed and never revealed",
+    );
     // The esmeralda sections belong to the esmeralda view.
     expect(t).not.toContain("falsification cards");
     expect(t).not.toContain("zero-extraction ledger");
