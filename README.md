@@ -63,10 +63,24 @@ Mainnet is the default network; pass `--network esmeralda` for a testnet tender.
 
 Each check prints one line, pass, fail, or could not be read, and the run ends with a count. The exit code is zero only when every check passes. Could not be read means a reveal's transaction could not be read from any indexer, so that reveal cannot be recomputed against its commitment today, for example when an indexer has pruned old transaction bodies. It is neither a pass nor a failure, and the tender is not fully verified until every check has run, so the exit code stays non-zero.
 
+## Attack your own tender
+
+`scripts/attack.py` drives one tender of your own through the attacks a sealed tender has to survive, and reports what the chain does with each one. It takes a draft tender you created in the app and registered in your circle, locks and funds it, commits three bids from three of your accounts, and then, inside the tender's own windows, submits a duplicate commitment, a bid carrying too small a bond, a rules rewrite after the lock, a bid after the deadline, reveals with the wrong salt, the wrong price, and another account's identity, a reveal of a bid that was never committed, an early close of the reveal window, an early move to delivery, an override with an all-zero rationale hash, an override choosing a bid nobody revealed, and an override signed by a single approver, which the tool then checks on a live read to confirm the award did not move. After settlement it submits payment and bond claims by the wrong accounts, a second payment claim by the winner, and a direct call to the tender's internal refund path. The tender finishes honestly between the attacks: two bids reveal, the lowest valid revealed bid wins, delivery is confirmed at threshold, and the normal claims land. One bid is never revealed on purpose, so it ends the tender still sealed and its bond forfeits.
+
+Every attack is expected to be rejected, and the tool prints each rejection in the chain's own words. An attack that is accepted, or an honest step that is rejected, stops the run at once and the exit code is non-zero.
+
+It needs Python 3, a running tari_ootle_walletd holding the five accounts (an operator who is a circle approver, a second approver, and three sellers), and the daemon's cookie file. Run it from the repo root:
+
+```
+python3 scripts/attack.py --tender component_<tender address> --circle component_<circle address> --cookie <path to the daemon .cookie file>
+```
+
+Account names, prices, the daemon address, and the network are flags; run it with `--help` for the full list, and add `--report <path>` to save the run as JSON. Run it only against your own deployment: the transactions are real, a rejected attack still pays its network fee, the escrow comes out of the operator account, and the sealed bid's bond forfeits by design.
+
 ## Status
 
 The templates are published on Tari mainnet: circle template `template_b86a46241753b8b8e4c2e9571c0db727925d77e1274009175e4f0b0e18cf466b`, tender template `template_267d1d73da73ec990e8711e492bccb9112076051d396922bdef2b9d667c684eb`. The bytes published were the exact esmeralda template bytes. The mainnet network recompiled the code at publish time, so the stored code hashes differ from esmeralda's while the template interface is identical.
 
-The Heartland Provisions Circle is live on mainnet at `component_46237d52379c5d9289814c67ca840f5fa2aad2b12ed2291acf0e74a5091aca71`, three approvers, threshold 2. A season of six tenders ran against it: a plain award, a tie, an override, a dispute, an expiry, and a ten-seller tender. Each one settled or expired and was verified in full by both the standalone script and the app's verifier, with identical readings. The same product ran a seven-tender season on the esmeralda testnet before mainnet.
+The Heartland Provisions Circle is live on mainnet at `component_46237d52379c5d9289814c67ca840f5fa2aad2b12ed2291acf0e74a5091aca71`, three approvers, threshold 2. A season of six tenders ran against it: a plain award, a tie, an override, a dispute, an expiry, and a ten-seller tender. Each one settled or expired and was verified in full by both the standalone script and the app's verifier, with identical readings. A seventh mainnet tender was then run purely as an attack test: eighteen attack transactions were submitted inside its own windows and the chain rejected every one, a single approver's override signature left the award unchanged, one bid ended the tender still sealed, and the tender settled honestly and was verified in full by both verifiers. The same product ran a seven-tender season on the esmeralda testnet before mainnet.
 
 The web app is live at https://asiri-libg.netlify.app and defaults to mainnet, with an esmeralda switch kept. Its results page carries the esmeralda season's recorded receipts and the mainnet season's records, each under its own network's view. Every tender on either network can be re-checked with the verifier above.
