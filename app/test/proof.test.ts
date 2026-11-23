@@ -155,10 +155,11 @@ describe("zero-extraction ledger", () => {
     expect(LEDGER.totals.feesMicro).toBe(676519);
   });
 
-  it("carries the one fee discrepancy exactly as printed", () => {
+  it("carries the one fee discrepancy as corrected", () => {
     expect(LEDGER.discrepancy.tx).toBe("83f4137fe19c");
-    expect(LEDGER.discrepancy.evidenceMicro).toBe(3806);
-    expect(LEDGER.discrepancy.historyMicro).toBe(3850);
+    expect(LEDGER.discrepancy.feeMicro).toBe(3850);
+    expect(LEDGER.discrepancy.originallyWrittenMicro).toBe(3806);
+    expect(LEDGER.discrepancy.resolved).toBe(true);
   });
 
   it("the ledger rows cover the same tenders as the results", () => {

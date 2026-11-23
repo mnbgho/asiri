@@ -514,7 +514,7 @@ export async function renderResults(
   );
   ledger.body.append(
     notice(
-      `one fee figure does not match between the two records: the dispute tender's collect-forfeits fee, transaction ${led.discrepancy.tx}, is written as ${micro(led.discrepancy.evidenceMicro)} in the evidence record and ${micro(led.discrepancy.historyMicro)} in the wallet history. it stands as printed in both, uncorrected.`,
+      `one fee figure in the evidence record was corrected: the dispute tender's collect-forfeits fee, transaction ${led.discrepancy.tx}, was first written as ${micro(led.discrepancy.originallyWrittenMicro)}, the tie tender's collect-forfeits fee carried into the dispute row in error. the wallet history's fee is ${micro(led.discrepancy.feeMicro)}, and the evidence record was corrected to match it. the discrepancy is resolved.`,
     ),
   );
   wrap.append(ledger.box);

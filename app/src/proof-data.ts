@@ -167,7 +167,8 @@ export const LEDGER = {
   },
   "discrepancy": {
     "tx": "83f4137fe19c",
-    "evidenceMicro": 3806,
-    "historyMicro": 3850
+    "feeMicro": 3850,
+    "originallyWrittenMicro": 3806,
+    "resolved": true
   }
 } as const;
