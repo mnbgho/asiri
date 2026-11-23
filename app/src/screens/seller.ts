@@ -1,4 +1,4 @@
-// The seller desk: commit a sealed bid, then come back and
+// Bid and reveal: commit a sealed bid, then come back and
 // reveal it. The salt is generated here, shown once, and kept
 // only in this browser. Losing it forfeits the bond: the bid
 // can never be revealed without it.

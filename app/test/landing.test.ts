@@ -1,6 +1,6 @@
 // The landing page at its full Section 15A scope: the three
 // part pill nav, the hero and its seal, the letter grid, the
-// five steps, the rig panel answered from the record, the
+// seven steps, the rig panel answered from the record, the
 // questions, the manifesto stat card, and the blue footer.
 // The DOM here is the same small fake as copy-gating.test.ts;
 // indexer reads are stubbed, so these tests cover what
@@ -151,16 +151,32 @@ describe("landing at full Section 15A scope", () => {
     }
   });
 
-  it("runs the five steps in order", async () => {
+  it("runs the seven steps in order, each linked to its screen", async () => {
     const r = await render();
     const steps = r.querySelectorAll(".lstep");
-    expect(steps).toHaveLength(5);
+    expect(steps).toHaveLength(7);
     const titles = steps.map((s) => s.textContent);
-    expect(titles[0]).toContain("lock the rules");
-    expect(titles[1]).toContain("escrow the budget");
-    expect(titles[2]).toContain("bid in secret");
-    expect(titles[3]).toContain("reveal to win");
-    expect(titles[4]).toContain("deliver, then settle");
+    expect(titles[0]).toContain("form a circle");
+    expect(titles[1]).toContain("lock the rules and the budget");
+    expect(titles[2]).toContain("sellers commit sealed bids");
+    expect(titles[3]).toContain("bids open only on reveal");
+    expect(titles[4]).toContain("the lowest revealed bid wins");
+    expect(titles[5]).toContain("delivery is confirmed");
+    expect(titles[6]).toContain("then the winner is paid");
+    // Each step links to the screen where that step is done
+    // or proven, in the app's own route order.
+    const hrefs = r
+      .querySelectorAll(".step-link")
+      .map((a) => (a as unknown as { href: string }).href);
+    expect(hrefs).toEqual([
+      "#/app/create",
+      "#/app/create",
+      "#/app/seller",
+      "#/app/seller",
+      "#/app/results",
+      "#/app/approvals",
+      "#/app/results",
+    ]);
   });
 
   it("answers the rig attacks with the live mainnet attack record", () => {

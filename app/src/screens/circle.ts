@@ -69,7 +69,7 @@ export async function renderCircle(
 
     const tenders = box("its tenders", `${c.tenders.length}`);
     if (!c.tenders.length)
-      tenders.body.append(el("div", "empty", "no tenders yet. create one from the create screen, then register it here."));
+      tenders.body.append(el("div", "empty", "no tenders yet. create one from start a circle or tender, then register it here."));
     for (const t of c.tenders) {
       const row = el("button", "trow");
       row.append(el("span", undefined, short(t)));

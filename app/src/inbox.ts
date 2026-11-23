@@ -60,8 +60,8 @@ export function personalItems(args: {
       title: `${name(t)}: your bid is still sealed`,
       detail:
         t.revealDeadline !== null
-          ? `reveal it from the seller desk before the window closes, ${deadlineText(network, t.revealDeadline, epoch)}. a bid nobody reveals stays sealed, and its bond is forfeited.`
-          : "reveal it from the seller desk while the reveal window is open. a bid nobody reveals stays sealed, and its bond is forfeited.",
+          ? `reveal it from bid and reveal before the window closes, ${deadlineText(network, t.revealDeadline, epoch)}. a bid nobody reveals stays sealed, and its bond is forfeited.`
+          : "reveal it from bid and reveal while the reveal window is open. a bid nobody reveals stays sealed, and its bond is forfeited.",
       dest: "#/app/seller",
     });
   }

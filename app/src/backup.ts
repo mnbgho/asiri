@@ -1,4 +1,4 @@
-// Backups of the seller desk's saved bids.
+// Backups of the bid and reveal screen's saved bids.
 //
 // A saved bid is the only copy of its salt anywhere: the
 // commitment on chain is a one-way hash, and neither the app,

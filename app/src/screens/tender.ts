@@ -301,9 +301,9 @@ export async function renderTender(
     }
     if (!act.children.length) {
       if (t.state === "Open")
-        act.append(el("div", "empty", "bidding is open. sellers commit from the seller desk."));
+        act.append(el("div", "empty", "bidding is open. sellers commit their bids on the bid and reveal screen."));
       else if (t.state === "Reveal")
-        act.append(el("div", "empty", "reveals are open. sellers reveal from the seller desk."));
+        act.append(el("div", "empty", "reveals are open. sellers reveal on the bid and reveal screen."));
       else if (t.state === "Disputed")
         act.append(el("div", "empty", "this tender is disputed. the circle's approvers resolve it from the approvals screen, and the outcome settles here."));
       else if (t.state === "Settled" || t.state === "Expired")

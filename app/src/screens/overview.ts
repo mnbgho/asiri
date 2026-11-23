@@ -148,7 +148,7 @@ export async function renderOverview(
           "empty",
           app.network === "mainnet"
             ? "no public tenders are listed on mainnet yet. switch to the esmeralda testnet to see the live trial, or open a tender by address above."
-            : "no tenders found yet on this network. open one by address above, or create the first circle from the create screen.",
+            : "no tenders found yet on this network. open one by address above, or create the first circle from start a circle or tender.",
         ),
       );
       return circleStates;

@@ -60,7 +60,7 @@ select:focus-visible, textarea:focus-visible {
 
 /* landing, to the approved design in Section 15A: three part
    pill nav, centred hero over the dot grid and glow, the seal,
-   the letter grid, the five steps, the rig panel, the two
+   the letter grid, the seven steps, the rig panel, the two
    column questions, the manifesto row with its tilted stat
    card, and the solid blue footer. */
 .lp-nav {
@@ -194,7 +194,7 @@ select:focus-visible, textarea:focus-visible {
 .lcell:hover { background: var(--blue); }
 .lcell:hover .L, .lcell:hover .cap, .lcell:hover .cap b { color: var(--white); }
 .lcell:hover .arr { opacity: 1; }
-/* the five steps */
+/* the seven steps */
 .lsteps { display: grid; gap: 10px; margin-top: 18px; }
 .lstep {
   display: flex; gap: 16px; align-items: flex-start; background: var(--white);
@@ -208,6 +208,11 @@ select:focus-visible, textarea:focus-visible {
 }
 .lstep h3 { font-size: 16px; }
 .lstep p { font-size: 14px; color: var(--mut1); line-height: 1.55; margin-top: 3px; }
+.lstep .step-link {
+  display: inline-block; margin-top: 7px; font-size: 13px; font-weight: 500;
+  color: var(--blue); text-decoration: none;
+}
+.lstep .step-link:hover { text-decoration: underline; }
 /* the rig panel */
 .riglab {
   margin-top: 26px; background: var(--void); border-radius: 8px;
@@ -320,8 +325,10 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
 .snav button {
   border: 0; background: transparent; text-align: left; padding: 10px 12px;
   border-radius: 6px; font-size: 14px; color: var(--mut1);
-  display: flex; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
 }
+.snav .nav-label { font-weight: 500; }
+.snav .nav-help { font-size: 11.5px; line-height: 1.4; }
 .snav button:hover { color: var(--void); }
 .snav button.on { background: var(--white); color: var(--void); border: 1px solid var(--border); }
 .snav .cnt {
@@ -341,6 +348,10 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
 .main-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
 .main-head h1, .main-head h2 { font-size: 30px; }
 .main-head .spacer { flex: 1; }
+.screen-purpose {
+  font-size: 15px; color: var(--mut1); line-height: 1.55;
+  max-width: 760px; margin: -8px 0 22px;
+}
 
 /* content boxes */
 .box { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }

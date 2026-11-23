@@ -85,16 +85,86 @@ function startDeadlineTimer(): void {
   deadlineTimer = setInterval(() => void tickDeadlines(), 60_000);
 }
 
-const SCREENS: Record<string, string> = {
-  overview: "overview",
+// The screens' titles, keyed by route. The tender and circle
+// routes are records: they are opened from a list or by
+// address, not from the sidebar, so they carry a title and a
+// purpose line but no nav entry of their own.
+const TITLES: Record<string, string> = {
+  overview: "circles and tenders",
   tender: "tender record",
-  circle: "circle",
-  create: "create tender",
-  seller: "seller desk",
+  circle: "circle record",
+  create: "start a circle or tender",
+  seller: "bid and reveal",
   approvals: "approvals",
-  verify: "verify",
+  verify: "verify a tender",
   results: "results",
   help: "help",
+};
+
+// The sidebar, in the order a tender actually runs: see the
+// circles and tenders, start one, bid on it, approve what it
+// needs, then read the proof, with the self-check and the
+// help behind the proof. Each entry carries one plain line
+// saying what the visitor does or finds there, so the
+// navigation alone decodes the product.
+const NAV: { key: string; label: string; helper: string }[] = [
+  {
+    key: "overview",
+    label: "circles and tenders",
+    helper: "every circle and tender this browser can see, with its live state",
+  },
+  {
+    key: "create",
+    label: "start a circle or tender",
+    helper: "form the buying group, then lock its tender's rules and budget",
+  },
+  {
+    key: "seller",
+    label: "bid and reveal",
+    helper: "sellers: commit a sealed bid, then open it in the reveal window",
+  },
+  {
+    key: "approvals",
+    label: "approvals",
+    helper: "what is waiting for your signature: overrides, deliveries, disputes",
+  },
+  {
+    key: "results",
+    label: "results",
+    helper: "the proof: finished tenders, checked by two verifiers, with receipts",
+  },
+  {
+    key: "verify",
+    label: "verify a tender",
+    helper: "re-run the checks on any tender yourself, live, no wallet needed",
+  },
+  {
+    key: "help",
+    label: "help",
+    helper: "the questions every new circle asks, answered plainly",
+  },
+];
+
+// One plain line at the top of every screen, saying what the
+// screen is for, so no screen needs guessing at.
+const PURPOSES: Record<string, string> = {
+  overview:
+    "every circle and tender this browser can see, each with its live state. open a tender to read its whole record and act on it.",
+  tender:
+    "one tender's whole record: its locked rules, its money, every bid and reveal, and the actions its state allows.",
+  circle:
+    "one buying circle: its approvers, its treasury, its tenders, and what the circle can do.",
+  create:
+    "form a buying circle first, then create a tender for it. the rules and the budget lock before bidding opens, and the budget is escrowed in the same step.",
+  seller:
+    "commit a sealed bid with its bond while bidding is open, then come back in the reveal window and open it. only opened bids can win, and a bid nobody opens stays sealed.",
+  approvals:
+    "everything waiting for your signature: override proposals, deliveries to confirm, disputes to settle, and what needs you as a seller or a winner.",
+  verify:
+    "check any tender yourself. the verifier recomputes every check from the public record, in your browser. no wallet needed.",
+  results:
+    "the proof: the finished season tenders, each checked by two verifiers, with its receipt, the money ledger, and the attacks the chain refused.",
+  help: "the questions a new circle asks in its first months, answered from how the product actually behaves.",
 };
 
 async function route(): Promise<void> {
@@ -151,9 +221,13 @@ async function route(): Promise<void> {
   side.append(seg);
 
   const nav = el("nav", "snav");
-  for (const key of Object.keys(SCREENS)) {
-    const b = el("button", key === screen ? "on" : undefined, SCREENS[key]);
-    b.addEventListener("click", () => go(`#/app/${key}`));
+  for (const item of NAV) {
+    const b = el("button", item.key === screen ? "on" : undefined);
+    b.append(
+      el("span", "nav-label", item.label),
+      el("span", "nav-help", item.helper),
+    );
+    b.addEventListener("click", () => go(`#/app/${item.key}`));
     nav.append(b);
   }
   side.append(nav);
@@ -267,13 +341,18 @@ async function route(): Promise<void> {
   // heading order never skips a level. (It rendered as an h2
   // with h3 boxes until the accessibility pass: same styles,
   // the stylesheet names both levels.)
-  head.append(el("h1", undefined, SCREENS[screen] ?? "overview"));
+  head.append(el("h1", undefined, TITLES[screen] ?? "circles and tenders"));
   head.append(el("span", "pill pill-tint", networkPill(app.indexer.cfg)));
   head.append(el("span", "spacer"));
   const newBtn = el("button", "btn btn-blue btn-sm", "new tender");
   newBtn.addEventListener("click", () => go("#/app/create"));
   head.append(newBtn);
   main.append(head);
+  // The screen's purpose, stated in one plain line under its
+  // title, so a first-time visitor never has to guess what
+  // the screen is for.
+  const purpose = PURPOSES[screen];
+  if (purpose) main.append(el("p", "screen-purpose", purpose));
   const content = el("div");
   main.append(content);
   frame.append(main);
@@ -303,11 +382,11 @@ async function route(): Promise<void> {
         break;
       case "tender":
         if (param) await renderTender(app, content, decodeURIComponent(param), go);
-        else content.append(el("div", "empty", "open a tender from the overview."));
+        else content.append(el("div", "empty", "open a tender from circles and tenders."));
         break;
       case "circle":
         if (param) await renderCircle(app, content, decodeURIComponent(param), go);
-        else content.append(el("div", "empty", "open a circle from the overview."));
+        else content.append(el("div", "empty", "open a circle from circles and tenders."));
         break;
       case "create":
         await renderCreate(app, content, go);

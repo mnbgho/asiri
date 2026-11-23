@@ -220,4 +220,31 @@ describe("focus and headings", () => {
     const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
     expect(main).toContain('el("h1"');
   });
+
+  it("orders the sidebar as a tender runs, with a helper line on every entry", () => {
+    // main.ts is read as source for the same reason as above.
+    const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
+    const order = [
+      'key: "overview"',
+      'key: "create"',
+      'key: "seller"',
+      'key: "approvals"',
+      'key: "results"',
+      'key: "verify"',
+      'key: "help"',
+    ].map((k) => main.indexOf(k));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // Every entry renders its plain helper line, and every
+    // screen opens with its purpose line under the title.
+    expect(main).toContain("nav-help");
+    expect(main).toContain("screen-purpose");
+    for (const label of [
+      "circles and tenders",
+      "start a circle or tender",
+      "bid and reveal",
+    ]) {
+      expect(main).toContain(label);
+    }
+  });
 });

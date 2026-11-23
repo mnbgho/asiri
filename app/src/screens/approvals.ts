@@ -256,7 +256,7 @@ export async function renderApprovals(
         "empty",
         me
           ? "nothing needs you as a seller or a winner on the circles and tenders this browser can see."
-          : "save your key above, or commit a bid from the seller desk, and this list gathers what needs you: reveals due, claims open, bonds back, refunds to collect.",
+          : "save your key above, or commit a bid from bid and reveal, and this list gathers what needs you: reveals due, claims open, bonds back, refunds to collect.",
       ),
     );
   } else {

@@ -1,7 +1,7 @@
 // The landing page, built to the approved design in
 // Section 15A of the build plan: a three part pill nav, the
 // hero with its seal, the live tender feed, the A-S-I-R-I
-// letter grid, the five steps with the try-to-rig-it panel,
+// letter grid, the seven steps with the try-to-rig-it panel,
 // the questions, the manifesto with its stat card, and the
 // blue footer. Every claim here stays inside what the chain
 // can prove, and every figure is read from the chain or
@@ -266,47 +266,77 @@ export async function renderLanding(
   letters.append(lgrid);
   root.append(letters);
 
-  // How a tender runs: the five steps, then the rig panel.
+  // How it works: the seven steps of a tender's run, in the
+  // order they happen, then the rig panel. Each step links to
+  // the screen where that step is done or proven, so the
+  // strip doubles as a map of the app.
   const how = el("section", "blk");
   how.id = "how";
   const hh = el("div", "blk-head");
   hh.append(
-    el("h2", undefined, "how a tender runs"),
-    el("p", undefined, "five steps. the money sits in the template from the first step to the last."),
+    el("h2", undefined, "how it works"),
+    el("p", undefined, "seven steps, in the order they run. the money sits in the template from the lock to the payment."),
   );
   how.append(hh);
   const steps = el("div", "lsteps");
-  const stepData: [string, string, string][] = [
+  const stepData: [string, string, string, string, string][] = [
     [
       "1",
-      "lock the rules",
-      "the circle publishes what it is buying, the budget cap, the bond, and the windows. the template hashes them and freezes them.",
+      "form a circle",
+      "the buyers form a circle and name its approvers: the members whose signatures confirm delivery, settle disputes, and can override an award.",
+      "start a circle",
+      "#/app/create",
     ],
     [
       "2",
-      "escrow the budget",
-      "the full budget moves into the tender vault in the same transaction. a tender cannot award money it does not hold.",
+      "lock the rules and the budget",
+      "the circle publishes what it is buying, the budget cap, the bond, and the windows. the template hashes the rules and freezes them, and the full budget moves into the tender's vault in the same step. a tender cannot award money it does not hold.",
+      "create the tender",
+      "#/app/create",
     ],
     [
       "3",
-      "bid in secret",
-      "sellers post a bond and a hash of their price. the chain records that a bid exists. the price itself is never transmitted.",
+      "sellers commit sealed bids",
+      "each seller posts the bond and a hash of their price. the chain records that a bid exists, and nothing of the price: it is never transmitted with the bid, and nobody can read it.",
+      "bid on a tender",
+      "#/app/seller",
     ],
     [
       "4",
-      "reveal to win",
-      "after the deadline, sellers open their bids to compete. the lowest valid revealed price wins, computed by the template, ties to the earliest reveal.",
+      "bids open only on reveal",
+      "when the reveal window opens, each seller opens their own bid. a bid nobody opens stays sealed forever, and it cannot win.",
+      "reveal a bid",
+      "#/app/seller",
     ],
     [
       "5",
-      "deliver, then settle",
-      "the circle confirms delivery and the template pays the winner. no confirmation, no payment. unspent budget returns to the circle.",
+      "the lowest revealed bid wins",
+      "the template computes the award itself: the lowest valid revealed price, ties to the earliest reveal. no person picks the winner.",
+      "see the awards proven",
+      "#/app/results",
+    ],
+    [
+      "6",
+      "delivery is confirmed",
+      "the winner delivers what was bought, and the circle's approvers confirm the delivery at their threshold. no confirmation, no payment.",
+      "the approvals screen",
+      "#/app/approvals",
+    ],
+    [
+      "7",
+      "then the winner is paid",
+      "the template pays the winner from the escrow and returns the unspent budget to the circle. the whole run stays on the record, and two verifiers recompute it.",
+      "read the proof",
+      "#/app/results",
     ],
   ];
-  for (const [n, title, text] of stepData) {
+  for (const [n, title, text, linkLabel, linkHash] of stepData) {
     const s = el("div", "lstep");
     const body = el("div");
     body.append(el("h3", undefined, title), el("p", undefined, text));
+    const a = el("a", "step-link", `${linkLabel} →`);
+    a.href = linkHash;
+    body.append(a);
     s.append(el("span", "n", n), body);
     steps.append(s);
   }
@@ -492,9 +522,9 @@ export async function renderLanding(
     [
       "the app",
       [
-        ["overview", "#/app/overview"],
-        ["start a tender", "#/app/create"],
-        ["seller desk", "#/app/seller"],
+        ["circles and tenders", "#/app/overview"],
+        ["start a circle or tender", "#/app/create"],
+        ["bid and reveal", "#/app/seller"],
         ["approvals", "#/app/approvals"],
       ],
     ],
