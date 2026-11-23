@@ -77,6 +77,10 @@ python3 scripts/attack.py --tender component_<tender address> --circle component
 
 Account names, prices, the daemon address, and the network are flags; run it with `--help` for the full list, and add `--report <path>` to save the run as JSON. Run it only against your own deployment: the transactions are real, a rejected attack still pays its network fee, the escrow comes out of the operator account, and the sealed bid's bond forfeits by design.
 
+## Evidence
+
+The full recorded evidence for both seasons is in `evidence/`. `evidence/mainnet.md` records the mainnet season and the attack test, tender by tender. `evidence/esmeralda.md` records the esmeralda season, a builder-run wallet pass through the shipped app, and the ten-seller scale tender. Every record names its tender, its transactions and their fees, and its verifier counts, and each one can be re-checked with the verifier above.
+
 ## Status
 
 The templates are published on Tari mainnet: circle template `template_b86a46241753b8b8e4c2e9571c0db727925d77e1274009175e4f0b0e18cf466b`, tender template `template_267d1d73da73ec990e8711e492bccb9112076051d396922bdef2b9d667c684eb`. The bytes published were the exact esmeralda template bytes. The mainnet network recompiled the code at publish time, so the stored code hashes differ from esmeralda's while the template interface is identical.
