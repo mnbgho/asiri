@@ -357,7 +357,7 @@ export async function renderLanding(
   const console_ = el("div", "rig-console");
   setAria(console_, "aria-live", "polite");
   const consoleHead = () =>
-    el("div", "cm", "asiri template · esmeralda evidence season");
+    el("div", "cm", "asiri template · mainnet attack record");
   console_.append(
     consoleHead(),
     el("div", "dim", "waiting for an attack…"),
