@@ -350,7 +350,7 @@ export async function renderLanding(
     el(
       "p",
       undefined,
-      "the four attacks every tender committee knows. two cannot be called at all: the template has no method for them. two are lies about a real tender's record, and both verifiers catch each one in the open, at the check quoted.",
+      "the four ways a tender gets rigged, each one tried against a real tender on mainnet. peeking cannot even be called: the template has no method for it, and on the attack tender a bid that was never revealed stayed sealed to the end, unable to win. the other three were called inside the tender's own windows, and the chain refused every one. the answers quote the record itself: the refused transactions by id, and the sealed bid that never opened.",
     ),
   );
   const rigBtns = el("div", "rig-btns");
