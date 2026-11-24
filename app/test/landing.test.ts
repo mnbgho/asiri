@@ -9,10 +9,16 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../src/app";
 import {
   MAINNET_ATTACK_OVERRIDE,
+  MAINNET_ATTACK_RECORD,
   MAINNET_ATTACKS,
 } from "../src/mainnet-attack-data";
+import { MAINNET_TENDER_RECORDS } from "../src/mainnet-results-data";
 import { LEDGER } from "../src/proof-data";
-import { renderLanding, rigAnswer } from "../src/screens/landing";
+import {
+  mainnetProofFacts,
+  renderLanding,
+  rigAnswer,
+} from "../src/screens/landing";
 
 class FakeEl {
   className = "";
@@ -133,6 +139,34 @@ describe("landing at full Section 15A scope", () => {
     ]) {
       expect(text).toContain(chip);
     }
+  });
+
+  it("carries the mainnet proof strip in the hero, figures from the record data", async () => {
+    const r = await render();
+    const strips = r.querySelectorAll(".proofstrip");
+    expect(strips).toHaveLength(1);
+    // Every figure the strip prints is recomputed here
+    // from the same data modules, so the test fails if the
+    // strip ever drifts from the record.
+    const records = [...MAINNET_TENDER_RECORDS, MAINNET_ATTACK_RECORD];
+    const total = records.reduce((s, t) => s + t.standaloneTotal, 0);
+    const passed = records.reduce((s, t) => s + t.standalonePass, 0);
+    const facts = mainnetProofFacts();
+    expect(facts.tenders).toBe(records.length);
+    expect(facts.attacksRefused).toBe(MAINNET_ATTACKS.length);
+    expect(facts.checks).toEqual({ passed, total });
+    const text = strips[0].textContent;
+    expect(text).toContain(`${records.length}`);
+    expect(text).toContain("tenders run on mainnet");
+    expect(text).toContain(`${passed} of ${total}`);
+    expect(text).toContain("checks passed by two verifiers");
+    expect(text).toContain(`${MAINNET_ATTACKS.length}`);
+    expect(text).toContain("attacks refused by the chain");
+    const links = strips[0].querySelectorAll(".ps-link");
+    expect(links).toHaveLength(1);
+    expect((links[0] as unknown as { href: string }).href).toBe(
+      "#/app/results",
+    );
   });
 
   it("spells A-S-I-R-I in the letter grid, one mechanism per letter", async () => {

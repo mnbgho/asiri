@@ -6,17 +6,24 @@
 // blue footer. Every claim here stays inside what the chain
 // can prove, and every figure is read from the chain or
 // recomputed from its record: the feed reads the featured
-// circle live, the stat card's number comes from the
-// zero-extraction ledger data, and the rig panel's answers
-// quote the mainnet attack tender's record: the chain's own
-// rejections, with the transactions that carry them.
+// circle live, the proof strip in the hero recomputes its
+// figures from the mainnet record data, the stat card's
+// number comes from the zero-extraction ledger data, and
+// the rig panel's answers quote the mainnet attack tender's
+// record: the chain's own rejections, with the transactions
+// that carry them.
 import { App, el, setAria } from "../app";
 import {
   MAINNET_ATTACK_OVERRIDE,
+  MAINNET_ATTACK_RECORD,
   MAINNET_ATTACK_SEALED_BID,
   MAINNET_ATTACKS,
   type MainnetAttack,
 } from "../mainnet-attack-data";
+import {
+  MAINNET_TENDER_RECORDS,
+  type MainnetTenderRecord,
+} from "../mainnet-results-data";
 import { LEDGER } from "../proof-data";
 import { decodeCircleState, decodeTenderState } from "../state";
 import { BUILDER_RUN_LABEL, money } from "./common";
@@ -33,6 +40,44 @@ function attackByKey(key: string): MainnetAttack {
   const a = MAINNET_ATTACKS.find((x) => x.key === key);
   if (!a) throw new Error(`attack missing: ${key}`);
   return a;
+}
+
+export interface MainnetProofFacts {
+  tenders: number;
+  attacksRefused: number;
+  // The check count both verifiers share, present only
+  // when each verifier passed every mainnet record in full
+  // with identical counts. If the record ever stops
+  // supporting that, the strip leaves the figure out
+  // rather than printing one the record does not back.
+  checks: { passed: number; total: number } | null;
+}
+
+// The hero proof strip's figures, recomputed from the
+// mainnet record data on every render: the season records
+// plus the attack tender's record, and the attack list
+// itself. Nothing here is typed by hand, so the strip
+// cannot drift from the record it points at.
+export function mainnetProofFacts(): MainnetProofFacts {
+  const records: MainnetTenderRecord[] = [
+    ...MAINNET_TENDER_RECORDS,
+    MAINNET_ATTACK_RECORD,
+  ];
+  const sum = (pick: (r: MainnetTenderRecord) => number) =>
+    records.reduce((s, r) => s + pick(r), 0);
+  const total = sum((r) => r.standaloneTotal);
+  const passed = sum((r) => r.standalonePass);
+  const appTotal = sum((r) => r.appTotal);
+  const appPassed = sum((r) => r.appPass);
+  const checks =
+    total > 0 && passed === total && appTotal === total && appPassed === total
+      ? { passed, total }
+      : null;
+  return {
+    tenders: records.length,
+    attacksRefused: MAINNET_ATTACKS.length,
+    checks,
+  };
 }
 
 // The four attacks, answered from the live mainnet attack
@@ -200,9 +245,36 @@ export async function renderLanding(
   const verify = el("button", "btn btn-white", "verify a tender");
   verify.addEventListener("click", () => go("#/app/verify"));
   cta.append(launch, verify);
+  // The proof strip: the mainnet record as a row of facts
+  // in the hero itself, so the strongest facts are on the
+  // first screen. Every figure comes from
+  // mainnetProofFacts(), recomputed from the record data.
+  const facts = mainnetProofFacts();
+  const strip = el("div", "proofstrip");
+  const factCell = (n: string, cap: string) => {
+    const c = el("div", "ps-cell");
+    c.append(el("span", "n", n), el("span", "cap", cap));
+    return c;
+  };
+  strip.append(factCell(String(facts.tenders), "tenders run on mainnet"));
+  if (facts.checks) {
+    strip.append(
+      factCell(
+        `${facts.checks.passed} of ${facts.checks.total}`,
+        "checks passed by two verifiers",
+      ),
+    );
+  }
+  strip.append(
+    factCell(String(facts.attacksRefused), "attacks refused by the chain"),
+  );
+  const recordLink = el("a", "ps-link", "read the mainnet record →");
+  recordLink.href = "#/app/results";
+  strip.append(recordLink);
   heroIn.append(
     cta,
     el("p", "small", "+ sealed bids + locked rules + public proof"),
+    strip,
     sealArt(),
   );
   hero.append(heroIn);
