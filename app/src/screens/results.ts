@@ -104,6 +104,12 @@ function renderMainnetResults(
   );
   kvNode(intro.body, "circle", explorerLink(app, "component", meta.circle));
   kv(intro.body, "network fees, six season tenders", micro(meta.totalFeesMicro));
+  kv(intro.body, "network fees, attack tender", micro(MAINNET_ATTACK_RECORD.feesMicro));
+  kv(
+    intro.body,
+    "network fees, all seven mainnet tenders",
+    micro(meta.totalFeesMicro + MAINNET_ATTACK_RECORD.feesMicro),
+  );
   wrap.append(intro.box);
 
   const receiptByTender = new Map(

@@ -221,7 +221,7 @@ export class Indexer {
     return `${this.cfg.explorer}/tx/${id}`;
   }
   explorerComponent(id: string): string {
-    return `${this.cfg.explorer}/component/${id}`;
+    return `${this.cfg.explorer}/substate/${id}`;
   }
 
   /**
