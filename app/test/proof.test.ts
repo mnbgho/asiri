@@ -147,7 +147,7 @@ describe("zero-extraction ledger", () => {
   });
 
   it("the scale row carries the recomputed lifecycle fee", () => {
-    const row = LEDGER.rows.find((r) => r.title === "the scale tender")!;
+    const row = LEDGER.rows.find((r) => r.title === "The scale tender")!;
     expect(row.paid).toBe(11000000);
     expect(row.refunded).toBe(9000000);
     expect(row.inVault).toBe(0);

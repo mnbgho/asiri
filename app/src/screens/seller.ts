@@ -57,10 +57,10 @@ async function readSubstatePlain(app: App, tenderAddr: string) {
  * of a problem was a chain rejection after signing.
  */
 export async function checkRevealable(app: App, tenderAddr: string): Promise<void> {
-  if (!app.wallet.account) throw new Error("connect your wallet first");
+  if (!app.wallet.account) throw new Error("Connect your wallet first");
   const sub = await readSubstatePlain(app, tenderAddr);
   if (!sub)
-    throw new Error(plainAddressError(tenderAddr, new Error("that component is down")));
+    throw new Error(plainAddressError(tenderAddr, new Error("That component is down")));
   let t: TenderComponentState;
   try {
     t = decodeTenderState(sub.value);
@@ -69,7 +69,7 @@ export async function checkRevealable(app: App, tenderAddr: string): Promise<voi
   }
   if (t.state !== "Reveal")
     throw new Error(
-      `this tender is ${t.state.toLowerCase()}, not in its reveal window. a bid can only be revealed while the tender is in its reveal state.`,
+      `This tender is ${t.state.toLowerCase()}, not in its reveal window. A bid can only be revealed while the tender is in its reveal state.`,
     );
   if (t.revealDeadline !== null) {
     let epoch = 0;
@@ -80,7 +80,7 @@ export async function checkRevealable(app: App, tenderAddr: string): Promise<voi
     }
     if (epoch && epoch > t.revealDeadline)
       throw new Error(
-        `the reveal window closed at epoch ${t.revealDeadline}. this bid stays sealed, and its bond follows the tender's outcome.`,
+        `The reveal window closed at epoch ${t.revealDeadline}. This bid stays sealed, and its bond follows the tender's outcome.`,
       );
   }
 }
@@ -127,45 +127,45 @@ export async function renderSeller(
   root.append(wrap);
   wrap.append(
     notice(
-      "your bid is a hash of your price, a random salt, and your payment identity. the chain sees the hash and your bond, nothing else. the price opens only when you reveal it, and a bid nobody reveals stays sealed forever.",
-      "how a sealed bid works.",
+      "Your bid is a hash of your price, a random salt, and your payment identity. The chain sees the hash and your bond, nothing else. The price opens only when you reveal it, and a bid nobody reveals stays sealed forever.",
+      "How a sealed bid works.",
     ),
   );
 
-  const commitBox = box("commit a bid");
+  const commitBox = box("Commit a bid");
   const tenderIn = textInput("mono");
-  tenderIn.placeholder = "tender component_…";
+  tenderIn.placeholder = "Tender component_…";
   const priceIn = textInput();
-  priceIn.placeholder = "your price in tari";
+  priceIn.placeholder = "Your price in tari";
   const identityIn = textInput("mono");
   identityIn.placeholder = "64 hex characters";
   if (app.myKey) identityIn.value = app.myKey;
-  identityIn.placeholder = "the key that gets paid if you win, 64 hex characters";
+  identityIn.placeholder = "The key that gets paid if you win, 64 hex characters";
   commitBox.body.append(
-    field("tender", tenderIn),
-    field("price", priceIn, "kept sealed until you reveal. it must be at or under the budget cap."),
-    field("payment identity", identityIn, "the public key the winnings go to. it is part of the commitment, so it cannot be swapped later."),
+    field("Tender", tenderIn),
+    field("Price", priceIn, "Kept sealed until you reveal. It must be at or under the budget cap."),
+    field("Payment identity", identityIn, "The public key the winnings go to. It is part of the commitment, so it cannot be swapped later."),
   );
   const summary = el("div");
-  const commitBtn = actionButton("commit this bid", "btn-blue", async () => {
+  const commitBtn = actionButton("Commit this bid", "btn-blue", async () => {
     const account = requireWallet(app, "commit this bid");
     if (!account) return;
     const tenderAddr = tenderIn.value.trim();
     const sub = await readSubstatePlain(app, tenderAddr);
     if (!sub)
-      throw new Error(plainAddressError(tenderAddr, new Error("that component is down")));
+      throw new Error(plainAddressError(tenderAddr, new Error("That component is down")));
     let t: TenderComponentState;
     try {
       t = decodeTenderState(sub.value);
     } catch (e) {
       throw new Error(plainAddressError(tenderAddr, e));
     }
-    if (t.state !== "Open") throw new Error(`this tender is ${t.state.toLowerCase()}, not open for bids`);
+    if (t.state !== "Open") throw new Error(`This tender is ${t.state.toLowerCase()}, not open for bids`);
     const price = parseTari(priceIn.value);
-    if (price > t.rules.budgetCap) throw new Error("the price is over the budget cap");
+    if (price > t.rules.budgetCap) throw new Error("The price is over the budget cap");
     const identity = identityIn.value.trim().toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(identity))
-      throw new Error("the payment identity is not 64 hex characters");
+      throw new Error("The payment identity is not 64 hex characters");
     const salt = crypto.getRandomValues(new Uint8Array(32));
     const commitment = await commitmentHash(price, salt, identity);
     const bid: SavedBid = {
@@ -178,15 +178,15 @@ export async function renderSeller(
     summary.replaceChildren();
     const warn = el("div", "warn");
     warn.append(
-      el("b", undefined, "your salt. "),
+      el("b", undefined, "Your salt. "),
       document.createTextNode(
-        "write it down now. it is shown once. this browser keeps a copy, but if you lose both, your bond is forfeited and the bid can never be opened.",
+        "Write it down now. It is shown once. This browser keeps a copy, but if you lose both, your bond is forfeited and the bid can never be opened.",
       ),
     );
     const saltEl = el("div", "hash", bytesToHex(salt));
     const kvBox = el("div");
-    kv(kvBox, "commitment hash", commitment);
-    kv(kvBox, "bond to post", money(t.rules.bondAmount));
+    kv(kvBox, "Commitment hash", commitment);
+    kv(kvBox, "Bond to post", money(t.rules.bondAmount));
     // The reveal deadline, stated at commitment time in epochs
     // and approximate wall-clock terms, as the plan promised:
     // this is the moment the seller must come back for, and a
@@ -199,14 +199,14 @@ export async function renderSeller(
       /* the deadlines still render as epochs */
     }
     if (t.bidDeadline !== null)
-      kv(kvBox, "bids close", deadlineText(app.network, t.bidDeadline, epoch));
+      kv(kvBox, "Bids close", deadlineText(app.network, t.bidDeadline, epoch));
     const windowText = revealWindowText(
       app.network,
       t.bidDeadline,
       t.revealDeadline,
       epoch,
     );
-    if (windowText) kv(kvBox, "reveal window", windowText);
+    if (windowText) kv(kvBox, "Reveal window", windowText);
     summary.append(warn, saltEl, kvBox);
     commitBox.body.append(summary);
     // Persist the bid before submitting: if the wallet accepts
@@ -222,11 +222,11 @@ export async function renderSeller(
   commitBox.body.append(commitBtn, feeNote("commitBid"), summary);
   wrap.append(commitBox.box);
 
-  const revealBox = box("reveal a bid");
+  const revealBox = box("Reveal a bid");
   const mine = savedBids();
   if (!mine.length) {
     revealBox.body.append(
-      el("div", "empty", "no bids saved in this browser. if you committed from another browser, paste the details below."),
+      el("div", "empty", "No bids saved in this browser. If you committed from another browser, paste the details below."),
     );
   }
   for (const bid of mine) {
@@ -253,23 +253,23 @@ export async function renderSeller(
   }
   if (mine.length) revealBox.body.append(feeNote("revealBid"));
   const mTender = textInput("mono");
-  mTender.placeholder = "tender component_…";
+  mTender.placeholder = "Tender component_…";
   const mPrice = textInput();
-  mPrice.placeholder = "price in tari";
+  mPrice.placeholder = "Price in tari";
   const mSalt = textInput("mono");
-  mSalt.placeholder = "the 32 byte salt, 64 hex characters";
+  mSalt.placeholder = "The 32 byte salt, 64 hex characters";
   const mIdentity = textInput("mono");
-  mIdentity.placeholder = "payment identity, 64 hex characters";
+  mIdentity.placeholder = "Payment identity, 64 hex characters";
   revealBox.body.append(
-    field("tender", mTender),
-    field("price", mPrice),
-    field("salt", mSalt),
-    field("payment identity", mIdentity),
+    field("Tender", mTender),
+    field("Price", mPrice),
+    field("Salt", mSalt),
+    field("Payment identity", mIdentity),
   );
-  const mBtn = actionButton("reveal with pasted details", "btn-white", async () => {
+  const mBtn = actionButton("Reveal with pasted details", "btn-white", async () => {
     if (!requireWallet(app, "reveal a bid")) return;
     const salt = hexToBytes(mSalt.value.trim().toLowerCase());
-    if (salt.length !== 32) throw new Error("the salt must be 32 bytes");
+    if (salt.length !== 32) throw new Error("The salt must be 32 bytes");
     await checkRevealable(app, mTender.value.trim());
     const { outcome } = await app.submitAction(
       B.buildRevealBid(
@@ -290,28 +290,28 @@ export async function renderSeller(
   // the export and import here are prevention, offered before
   // the loss, and the copy says plainly that no recovery path
   // exists.
-  const backupBox = box("back up your bids");
+  const backupBox = box("Back up your bids");
   backupBox.body.append(
     notice(
-      "your saved bids live only in this browser. a backup file holds each bid's tender, price, salt, payment identity, and commitment. whoever holds the file can reveal those bids, so keep it somewhere private. if you lose a salt and have no backup, that bid can never be revealed: the app cannot recover a salt, and there is no recovery path.",
-      "backups are prevention, not recovery.",
+      "Your saved bids live only in this browser. A backup file holds each bid's tender, price, salt, payment identity, and commitment. Whoever holds the file can reveal those bids, so keep it somewhere private. If you lose a salt and have no backup, that bid can never be revealed: the app cannot recover a salt, and there is no recovery path.",
+      "Backups are prevention, not recovery.",
     ),
   );
   const passIn = textInput();
   passIn.type = "password";
-  passIn.placeholder = "a passphrase only you know";
+  passIn.placeholder = "A passphrase only you know";
   backupBox.body.append(
     field(
-      "passphrase",
+      "Passphrase",
       passIn,
-      "for an encrypted backup, or to open an encrypted one below. the app does not keep it: if you forget it, the encrypted file cannot be opened, and there is still no recovery path.",
+      "For an encrypted backup, or to open an encrypted one below. The app does not keep it: if you forget it, the encrypted file cannot be opened, and there is still no recovery path.",
     ),
   );
   if (mine.length) {
-    const plainBtn = actionButton("download a plain backup", "btn-white", () => {
+    const plainBtn = actionButton("Download a plain backup", "btn-white", () => {
       downloadTextFile("asiri-bids.json", serializeBids(savedBids()));
     }, (e) => errorBox(wrap, e));
-    const encBtn = actionButton("download an encrypted backup", "btn-white", async () => {
+    const encBtn = actionButton("Download an encrypted backup", "btn-white", async () => {
       const text = await encryptBids(savedBids(), passIn.value);
       downloadTextFile("asiri-bids-encrypted.json", text);
     }, (e) => errorBox(wrap, e));
@@ -322,9 +322,9 @@ export async function renderSeller(
   const importStatus = el("div", "small mt");
   // The import's answer is a status: announced when it lands.
   setAria(importStatus, "role", "status");
-  const importBtn = actionButton("import the chosen file", "btn-white", async () => {
+  const importBtn = actionButton("Import the chosen file", "btn-white", async () => {
     const file = importIn.files?.[0];
-    if (!file) throw new Error("choose a backup file first");
+    if (!file) throw new Error("Choose a backup file first");
     const text = await file.text();
     const bids = isEncryptedBackup(text)
       ? await decryptBidsFile(text, passIn.value)
@@ -332,17 +332,17 @@ export async function renderSeller(
     const added = mergeBids(bids);
     if (added) {
       app.flash = {
-        text: `imported ${added} ${added === 1 ? "bid" : "bids"} from the backup file. they are saved in this browser now.`,
+        text: `Imported ${added} ${added === 1 ? "bid" : "bids"} from the backup file. They are saved in this browser now.`,
         txId: null,
       };
       go("#/app/seller");
     } else {
       importStatus.textContent =
-        "that file added no new bids. its bids were already saved in this browser.";
+        "That file added no new bids. Its bids were already saved in this browser.";
     }
   }, (e) => errorBox(wrap, e));
   backupBox.body.append(
-    field("import a backup file", importIn, "an encrypted file opens with the passphrase above."),
+    field("Import a backup file", importIn, "An encrypted file opens with the passphrase above."),
     importBtn,
     importStatus,
   );

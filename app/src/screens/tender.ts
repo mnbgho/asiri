@@ -20,7 +20,7 @@ export async function renderTender(
   root.append(wrap);
   try {
     const sub = await app.indexer.substate(address);
-    if (!sub) throw new Error("this tender's substate is down");
+    if (!sub) throw new Error("This tender's substate is down");
     const t = decodeTenderState(sub.value);
     app.watch("tenders", address);
     let epoch = 0;
@@ -30,56 +30,56 @@ export async function renderTender(
       /* deadlines still render */
     }
 
-    const head = box(t.circleName || "sealed tender", `${t.state.toLowerCase()} · epoch ${epoch || "?"}`);
-    kv(head.body, "tender", address);
-    kvNode(head.body, "circle", explorerLink(app, "component", t.circle));
-    kv(head.body, "bound to its circle", t.bound ? "yes" : "not yet");
-    kv(head.body, "template", t.template);
+    const head = box(t.circleName || "sealed tender", `${t.state} · epoch ${epoch || "?"}`);
+    kv(head.body, "Tender", address);
+    kvNode(head.body, "Circle", explorerLink(app, "component", t.circle));
+    kv(head.body, "Bound to its circle", t.bound ? "Yes" : "Not yet");
+    kv(head.body, "Template", t.template);
     wrap.append(head.box);
 
-    const rules = box("locked rules", t.rulesHash ? "hash locked at funding" : "not locked yet");
-    kv(rules.body, "what is being bought", "specification " + short(t.rules.specificationHash));
-    kvNode(rules.body, "specification hash", hashSpan(t.rules.specificationHash));
-    kv(rules.body, "budget cap", money(t.rules.budgetCap));
-    kv(rules.body, "bond per bid", money(t.rules.bondAmount));
+    const rules = box("locked rules", t.rulesHash ? "Hash locked at funding" : "Not locked yet");
+    kv(rules.body, "What is being bought", "specification " + short(t.rules.specificationHash));
+    kvNode(rules.body, "Specification hash", hashSpan(t.rules.specificationHash));
+    kv(rules.body, "Budget cap", money(t.rules.budgetCap));
+    kv(rules.body, "Bond per bid", money(t.rules.bondAmount));
     kv(
       rules.body,
-      "windows in epochs",
-      `bid ${t.rules.bidWindowEpochs} · reveal ${t.rules.revealWindowEpochs} · override ${t.rules.overrideWindowEpochs} · delivery ${t.rules.deliveryWindowEpochs} · claim grace ${t.rules.claimGraceEpochs} · dispute ${t.rules.disputeWindowEpochs}`,
+      "Windows in epochs",
+      `Bid ${t.rules.bidWindowEpochs} · Reveal ${t.rules.revealWindowEpochs} · Override ${t.rules.overrideWindowEpochs} · Delivery ${t.rules.deliveryWindowEpochs} · Claim grace ${t.rules.claimGraceEpochs} · Dispute ${t.rules.disputeWindowEpochs}`,
       true,
     );
     kv(
       rules.body,
-      "approval thresholds",
-      `${t.rules.approvalThreshold} of ${t.approvers.length} approvers · disputes need ${t.rules.disputeThreshold}`,
+      "Approval thresholds",
+      `${t.rules.approvalThreshold} of ${t.approvers.length} approvers · Disputes need ${t.rules.disputeThreshold}`,
       true,
     );
-    if (t.rulesHash) kvNode(rules.body, "rules hash", hashSpan(t.rulesHash));
+    if (t.rulesHash) kvNode(rules.body, "Rules hash", hashSpan(t.rulesHash));
     wrap.append(rules.box);
 
     const moneyBox = box("money");
     try {
       const escrowSub = await app.indexer.substate(t.escrowVault);
       if (escrowSub)
-        kv(moneyBox.body, "escrow now", money(decodeVaultBalance(escrowSub.value)));
+        kv(moneyBox.body, "Escrow now", money(decodeVaultBalance(escrowSub.value)));
     } catch {
-      kv(moneyBox.body, "escrow now", "unreadable");
+      kv(moneyBox.body, "Escrow now", "Unreadable");
     }
     try {
       const bondsSub = await app.indexer.substate(t.bondsVault);
       if (bondsSub)
-        kv(moneyBox.body, "bonds held now", money(decodeVaultBalance(bondsSub.value)));
+        kv(moneyBox.body, "Bonds held now", money(decodeVaultBalance(bondsSub.value)));
     } catch {
-      kv(moneyBox.body, "bonds held now", "unreadable");
+      kv(moneyBox.body, "Bonds held now", "Unreadable");
     }
     if (t.forfeitLocked > 0n)
-      kv(moneyBox.body, "forfeited, locked forever", money(t.forfeitLocked));
+      kv(moneyBox.body, "Forfeited, locked forever", money(t.forfeitLocked));
     if (t.forfeitForCircle > 0n)
-      kv(moneyBox.body, "forfeited, owed to the circle", money(t.forfeitForCircle));
+      kv(moneyBox.body, "Forfeited, owed to the circle", money(t.forfeitForCircle));
     if (t.settlement)
       kv(
         moneyBox.body,
-        "settled",
+        "Settled",
         `${money(t.settlement.price)} at epoch ${t.settlement.epoch}`,
       );
     wrap.append(moneyBox.box);
@@ -98,15 +98,15 @@ export async function renderTender(
     line("bids close", t.bidDeadline);
     line("reveals close", t.revealDeadline, true);
     line("override window closes", t.overrideDeadline, true);
-    line("delivery by", t.deliveryDeadline, true);
+    line("Delivery by", t.deliveryDeadline, true);
     line("claims close", t.claimDeadline, true);
     if (!timeline.body.children.length)
-      timeline.body.append(el("div", "empty", "not locked yet. the timeline appears when the circle funds the escrow."));
+      timeline.body.append(el("div", "empty", "Not locked yet. The timeline appears when the circle funds the escrow."));
     wrap.append(timeline.box);
 
     const bids = box("bids", `${t.commitments.length} committed · ${t.reveals.length} revealed`);
     if (!t.commitments.length) {
-      bids.body.append(el("div", "empty", "no bids committed yet. a committed bid is a hash: the price stays sealed until its owner reveals it."));
+      bids.body.append(el("div", "empty", "No bids committed yet. A committed bid is a hash: the price stays sealed until its owner reveals it."));
     }
     for (const c of t.commitments) {
       const row = el("div", "commit-row");
@@ -119,7 +119,7 @@ export async function renderTender(
           "span",
           undefined,
           reveal
-            ? `revealed at ${tari(reveal.price)} tari`
+            ? `Revealed at ${tari(reveal.price)} tari`
             : c.revealed
               ? "revealed"
               : "sealed",
@@ -130,22 +130,22 @@ export async function renderTender(
     }
     if (t.award) {
       const a = box("award");
-      kv(a.body, "winning price", money(t.award.winningPrice));
-      kvNode(a.body, "winning commitment", hashSpan(t.award.winningCommitment));
-      kvNode(a.body, "winner payment identity", hashSpan(t.award.winner));
+      kv(a.body, "Winning price", money(t.award.winningPrice));
+      kvNode(a.body, "Winning commitment", hashSpan(t.award.winningCommitment));
+      kvNode(a.body, "Winner payment identity", hashSpan(t.award.winner));
       wrap.append(a.box);
     }
     wrap.append(bids.box);
 
     if (t.overrideRecord) {
-      const o = box("override", "the circle replaced the computed award");
-      kvNode(o.body, "chosen seller", t.overrideRecord.chosen ? hashSpan(t.overrideRecord.chosen) : el("span", undefined, "none, the tender was cancelled"));
-      kvNode(o.body, "rationale hash", hashSpan(t.overrideRecord.rationaleHash));
+      const o = box("override", "The circle replaced the computed award");
+      kvNode(o.body, "Chosen seller", t.overrideRecord.chosen ? hashSpan(t.overrideRecord.chosen) : el("span", undefined, "None, the tender was cancelled"));
+      kvNode(o.body, "Rationale hash", hashSpan(t.overrideRecord.rationaleHash));
       o.body.append(evidenceCheckControl(t.overrideRecord.rationaleHash));
-      kv(o.body, "executed at epoch", String(t.overrideRecord.epoch), true);
+      kv(o.body, "Executed at epoch", String(t.overrideRecord.epoch), true);
       o.body.append(
         notice(
-          "the rationale text itself is published by the circle off chain. on the verify page, anyone can check that the published text hashes to the value above.",
+          "The rationale text itself is published by the circle off chain. On the verify page, anyone can check that the published text hashes to the value above.",
         ),
       );
       wrap.append(o.box);
@@ -155,36 +155,36 @@ export async function renderTender(
       const d = box(
         "dispute",
         t.dispute.resolvedForWinner === null
-          ? "waiting for the circle to resolve it"
+          ? "Waiting for the circle to resolve it"
           : "resolved",
       );
-      kvNode(d.body, "evidence hash", hashSpan(t.dispute.evidenceHash));
+      kvNode(d.body, "Evidence hash", hashSpan(t.dispute.evidenceHash));
       d.body.append(evidenceCheckControl(t.dispute.evidenceHash));
-      kv(d.body, "filed at epoch", String(t.dispute.epoch), true);
-      kvNode(d.body, "votes close", deadlineSpan(app.network, t.dispute.deadline, epoch));
+      kv(d.body, "Filed at epoch", String(t.dispute.epoch), true);
+      kvNode(d.body, "Votes close", deadlineSpan(app.network, t.dispute.deadline, epoch));
       const forWinner = t.disputeVotes.filter((v) => v.payWinner).length;
       kv(
         d.body,
-        "votes so far",
+        "Votes so far",
         `${forWinner} to pay the winner · ${t.disputeVotes.length - forWinner} to refund the circle`,
         true,
       );
       if (t.dispute.resolvedForWinner !== null) {
         kv(
           d.body,
-          "outcome",
+          "Outcome",
           t.dispute.resolvedForWinner
-            ? "resolved for the winner"
-            : "resolved for the circle",
+            ? "Resolved for the winner"
+            : "Resolved for the circle",
         );
         if (t.dispute.rationaleHash) {
-          kvNode(d.body, "resolution rationale hash", hashSpan(t.dispute.rationaleHash));
+          kvNode(d.body, "Resolution rationale hash", hashSpan(t.dispute.rationaleHash));
           d.body.append(evidenceCheckControl(t.dispute.rationaleHash));
         }
       } else {
         d.body.append(
           notice(
-            `the circle's approvers vote from the approvals screen. a resolution needs ${t.rules.disputeThreshold} votes for the same outcome with the same rationale, and the winning vote settles the tender or refunds the circle.`,
+            `The circle's approvers vote from the approvals screen. A resolution needs ${t.rules.disputeThreshold} votes for the same outcome with the same rationale, and the winning vote settles the tender or refunds the circle.`,
           ),
         );
       }
@@ -195,7 +195,7 @@ export async function renderTender(
     const actions = box("actions");
     const act = actions.body;
     const needWallet = () => {
-      if (!app.wallet.account) throw new Error("connect your wallet first");
+      if (!app.wallet.account) throw new Error("Connect your wallet first");
       return app.wallet.account;
     };
     const run = async (build: () => ReturnType<typeof B.buildCloseReveal>) => {
@@ -220,17 +220,17 @@ export async function renderTender(
       if (fee) act.append(feeNote(fee));
     };
     if (t.state === "Draft" && t.bound) {
-      addBtn("lock the rules and fund the escrow", "btn-blue", async () =>
+      addBtn("Lock the rules and fund the escrow", "btn-blue", async () =>
         run(() => B.buildLockAndFund(needWallet(), address, t.rules.budgetCap)),
       "lockAndFund");
     }
     if (t.state === "Reveal" && epoch && t.revealDeadline !== null && epoch > t.revealDeadline) {
-      addBtn("close the reveal window", "btn-blue", async () =>
+      addBtn("Close the reveal window", "btn-blue", async () =>
         run(() => B.buildCloseReveal(address)),
       "closeReveal");
     }
     if (t.state === "Awarded" && epoch && t.overrideDeadline !== null && epoch > t.overrideDeadline) {
-      addBtn("advance to delivery", "btn-blue", async () =>
+      addBtn("Advance to delivery", "btn-blue", async () =>
         run(() => B.buildAdvanceDelivery(address)),
       "advanceDelivery");
     }
@@ -250,12 +250,12 @@ export async function renderTender(
         app.myKey === t.award.winner
       ) {
         const evidenceIn = textInput("mono");
-        evidenceIn.placeholder = "sha-256 of your evidence, 64 hex characters";
+        evidenceIn.placeholder = "SHA-256 of your evidence, 64 hex characters";
         act.append(
           field(
-            "claim a dispute: the delivery did not happen, or did not match what was bought",
+            "Claim a dispute: the delivery did not happen, or did not match what was bought",
             evidenceIn,
-            "only this hash goes on chain. publish the evidence document where your circle can read it, so anyone can check it hashes to the value above. the circle then votes on the approvals screen.",
+            "Only this hash goes on chain. Publish the evidence document where your circle can read it, so anyone can check it hashes to the value above. The circle then votes on the approvals screen.",
           ),
           hashFileControl(
             (hex) => {
@@ -268,12 +268,12 @@ export async function renderTender(
           needWallet();
           const evidence = evidenceIn.value.trim().toLowerCase();
           if (!/^[0-9a-f]{64}$/.test(evidence))
-            throw new Error("the evidence hash is not 64 hex characters");
+            throw new Error("The evidence hash is not 64 hex characters");
           return run(() => B.buildClaimDispute(address, evidence));
         }, "claimDispute");
       }
       if (epoch && t.claimDeadline !== null && epoch > t.claimDeadline) {
-        addBtn("expire the tender", "btn-white", async () =>
+        addBtn("Expire the tender", "btn-white", async () =>
           run(() => B.buildExpire(address)),
         "expire");
       }
@@ -305,13 +305,13 @@ export async function renderTender(
     }
     if (!act.children.length) {
       if (t.state === "Open")
-        act.append(el("div", "empty", "bidding is open. sellers commit their bids on the bid and reveal screen."));
+        act.append(el("div", "empty", "Bidding is open. Sellers commit their bids on the bid and reveal screen."));
       else if (t.state === "Reveal")
-        act.append(el("div", "empty", "reveals are open. sellers reveal on the bid and reveal screen."));
+        act.append(el("div", "empty", "Reveals are open. Sellers reveal on the bid and reveal screen."));
       else if (t.state === "Disputed")
-        act.append(el("div", "empty", "this tender is disputed. the circle's approvers resolve it from the approvals screen, and the outcome settles here."));
+        act.append(el("div", "empty", "This tender is disputed. The circle's approvers resolve it from the approvals screen, and the outcome settles here."));
       else if (t.state === "Settled" || t.state === "Expired")
-        act.append(el("div", "empty", "no action is open on this tender right now."));
+        act.append(el("div", "empty", "No action is open on this tender right now."));
     }
     if (t.state !== "Settled" && t.state !== "Expired") {
       const tenderApproversIn = el("textarea");
@@ -319,14 +319,14 @@ export async function renderTender(
       tenderApproversIn.className = "mono";
       tenderApproversIn.value = t.approvers.join("\n");
       act.append(
-        field("propose an approver change, the new approver keys, one per line", tenderApproversIn),
+        field("Propose an approver change, the new approver keys, one per line", tenderApproversIn),
       );
       addBtn("propose approver change", "btn-white", async () => {
         const keys = tenderApproversIn.value
           .split(/[\s,]+/)
           .map((s) => s.trim().toLowerCase())
           .filter((s) => /^[0-9a-f]{64}$/.test(s));
-        if (!keys.length) throw new Error("add at least one approver key");
+        if (!keys.length) throw new Error("Add at least one approver key");
         await run(() => B.buildTenderApproverChange(address, keys));
       }, "proposeTenderApproverChange");
     }
@@ -337,7 +337,7 @@ export async function renderTender(
     try {
       const events = await app.indexer.events(address);
       if (!events.length) {
-        evBox.body.append(el("div", "empty", "no events recorded yet."));
+        evBox.body.append(el("div", "empty", "No events recorded yet."));
       }
       const seen = new Set<string>();
       const byTopic = new Map<string, string[]>();
@@ -402,15 +402,15 @@ export async function renderTender(
       if (events.length) {
         const links = el("div", "srow mt");
         const onExplorer = explorerLink(app, "component", address);
-        onExplorer.textContent = "this tender on the explorer";
-        const verifyLink = el("a", undefined, "run the checks on this tender");
+        onExplorer.textContent = "This tender on the explorer";
+        const verifyLink = el("a", undefined, "Run the checks on this tender");
         verifyLink.href = `#/app/verify/${address}`;
         verifyLink.className = "hash";
         links.append(onExplorer, verifyLink);
         evBox.body.append(links);
       }
     } catch {
-      evBox.body.append(el("div", "empty", "the event feed could not be read right now."));
+      evBox.body.append(el("div", "empty", "The event feed could not be read right now."));
     }
     wrap.append(evBox.box);
   } catch (e) {

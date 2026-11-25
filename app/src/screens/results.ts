@@ -93,21 +93,21 @@ function renderMainnetResults(
   go: (hash: string) => void,
 ): void {
   const meta = MAINNET_RESULTS_META;
-  const intro = box("verification results", "tari mainnet");
+  const intro = box("verification results", "Tari Mainnet");
   intro.body.append(
     notice(
-      "these are tari mainnet records. seven tenders ran on mainnet against the heartland provisions circle: the six season tenders, and a seventh built to be attacked, which was attacked in its own windows and finished honestly. both verifiers, the standalone script and the app's own verifier, read each tender from the public indexer and passed it in full with identical readings. open any tender in the verify screen to re-run the same checks live in your browser.",
+      "These are Tari Mainnet records. Seven tenders ran on Mainnet against the Heartland Provisions Circle: the six season tenders, and a seventh built to be attacked, which was attacked in its own windows and finished honestly. Both verifiers, the standalone script and the app's own verifier, read each tender from the public indexer and passed it in full with identical readings. Open any tender in the verify screen to re-run the same checks live in your browser.",
     ),
     notice(
-      "the records below carry their structured facts: addresses, epochs, amounts, fees, and the two verifiers' counts. under each record sits that tender's receipt: the standalone verifier's own output from a live run against the public mainnet indexer, its check rows shown in full and the file itself offered as a download, byte for byte. the command printed under each record reproduces the receipt from a clean checkout of the repo.",
+      "The records below carry their structured facts: addresses, epochs, amounts, fees, and the two verifiers' counts. Under each record sits that tender's receipt: the standalone verifier's own output from a live run against the public Mainnet indexer, its check rows shown in full and the file itself offered as a download, byte for byte. The command printed under each record reproduces the receipt from a clean checkout of the repo.",
     ),
   );
-  kvNode(intro.body, "circle", explorerLink(app, "component", meta.circle));
-  kv(intro.body, "network fees, six season tenders", micro(meta.totalFeesMicro));
-  kv(intro.body, "network fees, attack tender", micro(MAINNET_ATTACK_RECORD.feesMicro));
+  kvNode(intro.body, "Circle", explorerLink(app, "component", meta.circle));
+  kv(intro.body, "Network fees, six season tenders", micro(meta.totalFeesMicro));
+  kv(intro.body, "Network fees, attack tender", micro(MAINNET_ATTACK_RECORD.feesMicro));
   kv(
     intro.body,
-    "network fees, all seven mainnet tenders",
+    "Network fees, all seven Mainnet tenders",
     micro(meta.totalFeesMicro + MAINNET_ATTACK_RECORD.feesMicro),
   );
   wrap.append(intro.box);
@@ -142,11 +142,11 @@ function renderMainnetRecord(
   t: MainnetTenderRecord,
   receipt: MainnetTenderReceipt | undefined,
 ): { box: HTMLElement; body: HTMLElement } {
-    const b = box(t.title, t.state);
-    kvNode(b.body, "tender", explorerLink(app, "component", t.tender));
+    const b = box(t.title, cap(t.state));
+    kvNode(b.body, "Tender", explorerLink(app, "component", t.tender));
     kv(
       b.body,
-      "result",
+      "Result",
       `${t.standalonePass} of ${t.standaloneTotal} checks passed in the standalone verifier, ${t.appPass} of ${t.appTotal} in the app verifier`,
     );
     if (receipt) {
@@ -168,7 +168,7 @@ function renderMainnetRecord(
     b.body.append(proves);
     kv(
       b.body,
-      "bids",
+      "Bids",
       `${t.commitments} committed, ${t.reveals} revealed` +
         (t.reveals < t.commitments
           ? `, ${t.commitments - t.reveals} stayed sealed`
@@ -177,14 +177,14 @@ function renderMainnetRecord(
     if (t.paidMicro !== null) {
       kv(
         b.body,
-        "paid",
+        "Paid",
         `${money(BigInt(t.paidMicro))} to ${t.paidTo}, settled at epoch ${t.closedEpoch}`,
       );
     } else {
       kv(
         b.body,
-        "outcome",
-        `nothing paid, expired at epoch ${t.closedEpoch}`,
+        "Outcome",
+        `Nothing paid, expired at epoch ${t.closedEpoch}`,
       );
     }
     if (
@@ -194,33 +194,33 @@ function renderMainnetRecord(
     ) {
       kv(
         b.body,
-        "proven lowest revealed price",
+        "Proven lowest revealed price",
         `${money(BigInt(t.provenLowestMicro))}, by ${t.provenLowestBy}`,
       );
       kv(
         b.body,
-        "the override",
-        `the circle paid ${money(BigInt(t.paidMicro))} instead, by threshold approval, with a published rationale`,
+        "The override",
+        `The circle paid ${money(BigInt(t.paidMicro))} instead, by threshold approval, with a published rationale`,
       );
-      kv(b.body, "rationale hash", t.rationaleHash);
+      kv(b.body, "Rationale hash", t.rationaleHash);
     }
     if (t.disputeEvidenceHash !== null) {
-      kv(b.body, "dispute evidence hash", t.disputeEvidenceHash);
+      kv(b.body, "Dispute evidence hash", t.disputeEvidenceHash);
     }
     kv(
       b.body,
-      "escrow",
+      "Escrow",
       `${money(BigInt(t.capMicro))} locked, ` +
         (t.paidMicro !== null
           ? `${money(BigInt(t.paidMicro))} paid, `
-          : "nothing paid, ") +
+          : "Nothing paid, ") +
         `${money(BigInt(t.refundMicro))} refunded`,
     );
-    kv(b.body, "network fees", micro(t.feesMicro));
+    kv(b.body, "Network fees", micro(t.feesMicro));
     const recheck = el(
       "button",
       "btn btn-white btn-sm mt",
-      "recheck this tender live",
+      "Recheck this tender live",
     );
     recheck.addEventListener("click", () => {
       // These records live on mainnet; the live recheck has to
@@ -231,7 +231,7 @@ function renderMainnetRecord(
     b.body.append(recheck);
     const cmd = el("div", "cmdline mt");
     cmd.append(
-      document.createTextNode("or run it yourself: "),
+      document.createTextNode("Or run it yourself: "),
       el(
         "code",
         undefined,
@@ -243,7 +243,7 @@ function renderMainnetRecord(
       const total = receipt.pass + receipt.fail + receipt.couldNotRead;
       kv(
         b.body,
-        "receipt",
+        "Receipt",
         `${receipt.pass} of ${total} checks passed` +
           (receipt.fail ? `, ${receipt.fail} failed` : "") +
           (receipt.couldNotRead
@@ -253,19 +253,19 @@ function renderMainnetRecord(
       const prov = el("div", "detail");
       prov.append(
         document.createTextNode(
-          `receipt provenance: ${receipt.revealProvenance}`,
+          `Receipt provenance: ${receipt.revealProvenance}`,
         ),
       );
       b.body.append(prov);
       const hash = el("div", "detail");
       hash.append(
-        document.createTextNode(`receipt sha256: ${receipt.sha256}`),
+        document.createTextNode(`Receipt sha256: ${receipt.sha256}`),
       );
       b.body.append(hash);
       const dl = el(
         "button",
         "btn btn-white btn-sm mt",
-        "download the receipt (json)",
+        "Download the receipt (json)",
       );
       dl.addEventListener("click", () =>
         downloadTextFile(receipt.filename, receipt.json),
@@ -281,12 +281,12 @@ function attackRow(a: MainnetAttack): HTMLElement {
   const text = el("div");
   text.append(
     el("div", undefined, a.name),
-    el("div", "detail", `rejected · ${a.rejection}`),
+    el("div", "detail", `Rejected · ${a.rejection}`),
     el(
       "div",
       "detail",
-      (a.actor ? `by ${a.actor} · ` : "") +
-        `transaction ${a.tx} · fee ${micro(a.feeMicro)}`,
+      (a.actor ? `By ${a.actor} · ` : "") +
+        `Transaction ${a.tx} · Fee ${micro(a.feeMicro)}`,
     ),
   );
   row.append(text);
@@ -297,7 +297,7 @@ function renderMainnetAttacks(body: HTMLElement): void {
   body.append(el("h3", "mt", "The attacks: eighteen, all rejected"));
   body.append(
     notice(
-      "every attack below is an ordinary call to this tender's template from the circle's own accounts, with wrong inputs, wrong timing, or the wrong actor. the chain rejected each one and kept the fee. the tender then finished honestly, as the record above shows.",
+      "Every attack below is an ordinary call to this tender's template, with wrong inputs, wrong timing, or the wrong actor. The chain rejected each one and kept the fee. The tender then finished honestly, as the record above shows.",
     ),
   );
   for (const a of MAINNET_ATTACKS) {
@@ -309,19 +309,19 @@ function renderMainnetAttacks(body: HTMLElement): void {
   });
   body.append(
     notice(
-      `two of these attacks were submitted a second time when the runner's start command was retried by the transport: ${dupNames.join(" and ")}. each duplicate was rejected with the same message, and no state changed: every submission in that window was a rejection.`,
+      `Two of these attacks were submitted a second time when the runner's start command was retried by the transport: ${dupNames.join(" and ")}. Each duplicate was rejected with the same message, and no state changed: every submission in that window was a rejection.`,
     ),
   );
   const o = MAINNET_ATTACK_OVERRIDE;
   body.append(
     notice(
-      `one override was not rejected, and did not stand: an override for ${o.chosenAccount} was proposed (transaction ${o.proposeTx}) and signed by one approver, ${o.signer} (transaction ${o.signTx}). one signature is below the circle's threshold of ${o.threshold}, and a live read straight after showed the award unchanged, still ${o.awardWinner}, with no override recorded.`,
+      `One override was not rejected, and did not stand: an override for ${o.chosenAccount} was proposed (transaction ${o.proposeTx}) and signed by one approver, ${o.signer} (transaction ${o.signTx}). One signature is below the circle's threshold of ${o.threshold}, and a live read straight after showed the award unchanged, still ${o.awardWinner}, with no override recorded.`,
     ),
   );
   const s = MAINNET_ATTACK_SEALED_BID;
   body.append(
     notice(
-      `one bid stayed sealed to the end: ${s.by}'s ${money(BigInt(s.priceMicro))} bid was committed and never revealed. it could not win, its price never entered the record, and its bond forfeited on the recorded split, half to the circle and half locked in the tender.`,
+      `One bid stayed sealed to the end: ${s.by}'s ${money(BigInt(s.priceMicro))} bid was committed and never revealed. It could not win, its price never entered the record, and its bond forfeited on the recorded split, half to the circle and half locked in the tender.`,
     ),
   );
 }
@@ -339,21 +339,21 @@ export async function renderResults(
     return;
   }
 
-  const intro = box("verification results", "esmeralda testnet");
+  const intro = box("verification results", "Esmeralda testnet");
   intro.body.append(
     notice(
-      "these are esmeralda testnet records. the standalone verifier read each tender from the public indexer and recomputed every value from the record itself. open any tender in the verify screen to re-run the same checks live in your browser.",
+      "These are Esmeralda testnet records. The standalone verifier read each tender from the public indexer and recomputed every value from the record itself. Open any tender in the verify screen to re-run the same checks live in your browser.",
     ),
     notice(RESULTS_META.note),
   );
   kv(
     intro.body,
-    "produced by",
+    "Produced by",
     `${RESULTS_META.tool}, run on ${RESULTS_META.runDate}`,
   );
   intro.body.append(
     notice(
-      "check any tender here yourself, from a clean checkout of the repo, with one command: python3 scripts/verify.py <the tender address> --network esmeralda. the script is python 3, standard library only, nothing to install, and it exits non-zero if any check fails. the exact command for each tender is printed under its record below.",
+      "Check any tender here yourself, from a clean checkout of the repo, with one command: python3 scripts/verify.py <the tender address> --network esmeralda. The script is python 3, standard library only, nothing to install, and it exits non-zero if any check fails. The exact command for each tender is printed under its record below.",
     ),
   );
   wrap.append(intro.box);
@@ -363,8 +363,8 @@ export async function renderResults(
   );
 
   for (const t of TENDER_RESULTS) {
-    const b = box(t.title, t.state);
-    kvNode(b.body, "tender", explorerLink(app, "component", t.tender));
+    const b = box(t.title, cap(t.state));
+    kvNode(b.body, "Tender", explorerLink(app, "component", t.tender));
     if (t.runError !== null) {
       const errEl = el("div", "err", t.runError);
       setAria(errEl, "role", "alert");
@@ -374,7 +374,7 @@ export async function renderResults(
       const unread = t.checks.filter((c) => c.ok === null).length;
       kv(
         b.body,
-        "result",
+        "Result",
         `${passed} of ${t.checks.length} checks passed` +
           (unread ? `, ${unread} could not be read` : ""),
       );
@@ -391,7 +391,7 @@ export async function renderResults(
         b.body.append(r);
       }
     }
-    const recheck = el("button", "btn btn-white btn-sm mt", "recheck this tender live");
+    const recheck = el("button", "btn btn-white btn-sm mt", "Recheck this tender live");
     recheck.addEventListener("click", () => {
       // These records live on esmeralda; the live recheck has to
       // read that network's indexer, whichever network is shown.
@@ -406,7 +406,7 @@ export async function renderResults(
     // record it checks.
     const cmd = el("div", "cmdline mt");
     cmd.append(
-      document.createTextNode("or run it yourself: "),
+      document.createTextNode("Or run it yourself: "),
       el(
         "code",
         undefined,
@@ -420,7 +420,7 @@ export async function renderResults(
       const total = receipt.pass + receipt.fail + receipt.couldNotRead;
       kv(
         b.body,
-        "receipt",
+        "Receipt",
         `${receipt.pass} of ${total} checks passed` +
           (receipt.fail ? `, ${receipt.fail} failed` : "") +
           (receipt.couldNotRead
@@ -430,14 +430,14 @@ export async function renderResults(
       const prov = el("div", "detail");
       prov.append(
         document.createTextNode(
-          `receipt provenance: ${receipt.revealProvenance}`,
+          `Receipt provenance: ${receipt.revealProvenance}`,
         ),
       );
       b.body.append(prov);
       const dl = el(
         "button",
         "btn btn-white btn-sm mt",
-        "download the receipt (json)",
+        "Download the receipt (json)",
       );
       dl.addEventListener("click", () => downloadReceipt(receipt));
       b.body.append(dl);
@@ -446,37 +446,37 @@ export async function renderResults(
   }
 
   const inv = EXCEPTION_INVOICE;
-  const invoice = box("the exception invoice", "esmeralda testnet");
+  const invoice = box("The exception invoice", "Esmeralda testnet");
   invoice.body.append(
     notice(
-      "one tender, one public decision, three checked facts. the override tender above is the one tender where the circle's approvers set the computed award aside, and this is what that decision cost, measured exactly.",
+      "One tender, one public decision, three checked facts. The override tender above is the one tender where the circle's approvers set the computed award aside, and this is what that decision cost, measured exactly.",
     ),
   );
   kv(
     invoice.body,
-    "proven lowest revealed price",
+    "Proven lowest revealed price",
     `${money(BigInt(inv.provenLowest.priceMicro))}, by ${inv.provenLowest.sellerName}`,
   );
   kv(
     invoice.body,
-    "price actually paid",
+    "Price actually paid",
     `${money(BigInt(inv.pricePaid.priceMicro))}, to ${inv.pricePaid.sellerName}, settled at epoch ${inv.settledEpoch}`,
   );
   kv(
     invoice.body,
-    "the difference",
+    "The difference",
     money(BigInt(inv.differenceMicro)),
   );
   kv(
     invoice.body,
-    "the override",
-    `proposal ${inv.proposalId}, signed by ${inv.signers} approvers against a threshold of ${inv.threshold}, executed at epoch ${inv.executedEpoch}`,
+    "The override",
+    `Proposal ${inv.proposalId}, signed by ${inv.signers} approvers against a threshold of ${inv.threshold}, executed at epoch ${inv.executedEpoch}`,
   );
-  kv(invoice.body, "rationale hash", inv.rationaleHash);
+  kv(invoice.body, "Rationale hash", inv.rationaleHash);
   const rationale = el("div", "detail");
   rationale.append(
     document.createTextNode(
-      `the published rationale text, which hashes to that value: "${inv.rationaleText}"`,
+      `The published rationale text, which hashes to that value: "${inv.rationaleText}"`,
     ),
   );
   invoice.body.append(rationale);
@@ -484,10 +484,10 @@ export async function renderResults(
   wrap.append(invoice.box);
 
   const led = LEDGER;
-  const ledger = box("zero-extraction ledger", "seven tenders");
+  const ledger = box("zero-extraction ledger", "Seven tenders");
   ledger.body.append(
     notice(
-      "every tender the builders have run on esmeralda, accounted to the microtari. for each tender the escrow identity must close: the locked cap equals the winner paid, plus the refund the circle collected, plus what still sits in the escrow vault. the operator column is computed from every recorded outflow destination, not asserted.",
+      "Every tender run on Esmeralda, accounted to the microtari. For each tender the escrow identity must close: the locked cap equals the winner paid, plus the refund the circle collected, plus what still sits in the escrow vault. The operator column is computed from every recorded outflow destination, not asserted.",
     ),
   );
   for (const row of led.rows) {
@@ -496,7 +496,7 @@ export async function renderResults(
       row.title,
       `escrow ${money(BigInt(row.escrowIn))} in, ` +
         (row.paid === null
-          ? "nothing paid, no settlement, "
+          ? "Nothing paid, no settlement, "
           : `${money(BigInt(row.paid))} paid, `) +
         `${money(BigInt(row.refunded))} refunded, ` +
         `${money(BigInt(row.inVault))} still in the vault, ` +
@@ -505,45 +505,45 @@ export async function renderResults(
   }
   kv(
     ledger.body,
-    "locked in a tender forever",
+    "Locked in a tender forever",
     `${money(BigInt(led.totals.lockedForever))}, unspendable, not burned`,
   );
   kv(
     ledger.body,
-    "network fees, seven tenders",
+    "Network fees, seven tenders",
     micro(led.totals.feesMicro),
   );
   kv(
     ledger.body,
-    "paid to the operator, in total",
+    "Paid to the operator, in total",
     money(BigInt(led.totals.operatorPaid)),
   );
   ledger.body.append(
     notice(
-      `one fee figure in the evidence record was corrected: the dispute tender's collect-forfeits fee, transaction ${led.discrepancy.tx}, was first written as ${micro(led.discrepancy.originallyWrittenMicro)}, the tie tender's collect-forfeits fee carried into the dispute row in error. the wallet history's fee is ${micro(led.discrepancy.feeMicro)}, and the evidence record was corrected to match it. the discrepancy is resolved.`,
+      `One fee figure in the evidence record was corrected: the dispute tender's collect-forfeits fee, transaction ${led.discrepancy.tx}, was first written as ${micro(led.discrepancy.originallyWrittenMicro)}, the tie tender's collect-forfeits fee carried into the dispute row in error. The wallet history's fee is ${micro(led.discrepancy.feeMicro)}, and the evidence record was corrected to match it. The discrepancy is resolved.`,
     ),
   );
   wrap.append(ledger.box);
 
   const fm = FALSIFICATION_META;
-  const falsification = box("falsification cards", "esmeralda testnet");
+  const falsification = box("falsification cards", "Esmeralda testnet");
   falsification.body.append(
     notice(
-      "a results page that only shows passes asks to be trusted. these cards ask the opposite: each one takes the real record of a tender above, changes exactly one labelled thing, and runs both verifiers against the tampered copy. every card is rejected by both verifiers, at the checks quoted below, in the verifiers' own words. the originals were never edited, and anyone can repeat the experiment: take a tender's record, change one field, and watch the same checks fail.",
+      "A results page that only shows passes asks to be trusted. These cards ask the opposite: each one takes the real record of a tender above, changes exactly one labelled thing, and runs both verifiers against the tampered copy. Every card is rejected by both verifiers, at the checks quoted below, in the verifiers' own words. The originals were never edited, and anyone can repeat the experiment: take a tender's record, change one field, and watch the same checks fail.",
     ),
     notice(fm.methodNote),
   );
   for (const c of fm.controls) {
     kv(
       falsification.body,
-      `control, ${c.label}`,
+      `Control, ${c.label}`,
       `${c.standalone.pass} of ${c.standalone.total} checks passed in both verifiers, nothing failed, nothing unread`,
     );
   }
   const dlCards = el(
     "button",
     "btn btn-white btn-sm mt",
-    "download the cards (json)",
+    "Download the cards (json)",
   );
   dlCards.addEventListener("click", () =>
     downloadTextFile(FALSIFICATION_CARDS_FILENAME, FALSIFICATION_CARDS_JSON),
@@ -554,21 +554,21 @@ export async function renderResults(
     falsification.body.append(el("h3", "mt", cap(card.title)));
     kvNode(
       falsification.body,
-      "tender",
+      "Tender",
       explorerLink(app, "component", card.tender),
     );
-    kv(falsification.body, "the lie", card.lie);
-    kv(falsification.body, "the change", card.field);
-    kv(falsification.body, "original", card.originalText);
-    kv(falsification.body, "tampered", card.tamperedText);
+    kv(falsification.body, "The lie", card.lie);
+    kv(falsification.body, "The change", card.field);
+    kv(falsification.body, "Original", card.originalText);
+    kv(falsification.body, "Tampered", card.tamperedText);
     falsification.body.append(
-      el("div", "detail mt", `standalone verifier: ${card.passedText.standalone}, the failing checks:`),
+      el("div", "detail mt", `Standalone verifier: ${card.passedText.standalone}, the failing checks:`),
     );
     for (const r of card.rejections.standalone) {
       falsification.body.append(failRow(r));
     }
     falsification.body.append(
-      el("div", "detail mt", `app verifier: ${card.passedText.app}, the failing checks:`),
+      el("div", "detail mt", `App verifier: ${card.passedText.app}, the failing checks:`),
     );
     for (const r of card.rejections.app) {
       falsification.body.append(failRow(r));

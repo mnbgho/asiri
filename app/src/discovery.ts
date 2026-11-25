@@ -116,7 +116,7 @@ export async function discoverNetwork(
   const cfg = indexer.cfg;
   if (!templatesConfigured(cfg))
     throw new Error(
-      `the asiri templates are not published on ${cfg.label} yet, so there is nothing to discover`,
+      `The Asiri templates are not published on ${cfg.label} yet, so there is nothing to discover`,
     );
   let eventsSoFar = 0;
   const onEvent = (): void => {

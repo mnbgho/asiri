@@ -79,7 +79,7 @@ describe("clockText", () => {
     expect(clockText(new Date(2026, 10, 21, 9, 15), NOW)).toBe("09:15 tomorrow");
     const later = clockText(new Date(2026, 10, 25, 14, 30), NOW);
     expect(later).toContain("14:30 on");
-    expect(later).toContain("25 nov");
+    expect(later).toContain("25 Nov");
   });
 });
 
@@ -110,7 +110,7 @@ describe("deadlineText", () => {
 describe("revealWindowText", () => {
   it("states when reveals open and close, as promised at commitment", () => {
     const text = revealWindowText("esmeralda", 110, 120, 100, NOW);
-    expect(text).toContain("reveals open at epoch 110");
+    expect(text).toContain("Reveals open at epoch 110");
     expect(text).toContain("close at epoch 120 · in about 20 hours");
   });
 

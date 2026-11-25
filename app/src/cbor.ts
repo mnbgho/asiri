@@ -55,7 +55,7 @@ function head(out: Bytes, major: number, n: bigint): void {
 
 export function hexToBytes(hex: string): Uint8Array {
   if (!/^[0-9a-f]*$/.test(hex) || hex.length % 2 !== 0)
-    throw new Error(`not hex: ${hex.slice(0, 24)}`);
+    throw new Error(`Not hex: ${hex.slice(0, 24)}`);
   const out = new Uint8Array(hex.length / 2);
   for (let i = 0; i < out.length; i++)
     out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
@@ -69,7 +69,7 @@ export function bytesToHex(b: Uint8Array): string {
 /** An unsigned integer: u32, u64, or an Amount (µT). */
 export function encUint(v: bigint | number): Bytes {
   const n = BigInt(v);
-  if (n < 0n) throw new Error(`negative unsigned value: ${n}`);
+  if (n < 0n) throw new Error(`Negative unsigned value: ${n}`);
   const out: Bytes = [];
   if (n < 1n << 64n) {
     head(out, 0x00, n);
@@ -129,7 +129,7 @@ export function addressBytes(address: string, prefix: string): Uint8Array {
     ? address.slice(prefix.length)
     : address;
   if (!/^[0-9a-f]{64}$/.test(body))
-    throw new Error(`not a ${prefix.slice(0, -1)} address: ${address}`);
+    throw new Error(`Not a ${prefix.slice(0, -1)} address: ${address}`);
   return hexToBytes(body);
 }
 
@@ -204,7 +204,7 @@ export function decode(bytes: Uint8Array): CborValue {
   };
   const v = item();
   if (i !== bytes.length)
-    throw new Error(`trailing bytes in CBOR value (${bytes.length - i} extra)`);
+    throw new Error(`Trailing bytes in CBOR value (${bytes.length - i} extra)`);
   return v;
 }
 

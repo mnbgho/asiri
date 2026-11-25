@@ -241,7 +241,7 @@ describe("focus and headings", () => {
     expect(main).toContain("screen-purpose");
     for (const label of [
       "circles and tenders",
-      "start a circle or tender",
+      "Start a circle or tender",
       "bid and reveal",
     ]) {
       expect(main).toContain(label);

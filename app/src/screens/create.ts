@@ -33,7 +33,7 @@ async function findCreated(
     }
     await new Promise((r) => setTimeout(r, 1500));
   }
-  throw new Error("the created component could not be confirmed on the indexer yet");
+  throw new Error("The created component could not be confirmed on the indexer yet");
 }
 
 function keyList(text: string): string[] {
@@ -53,14 +53,14 @@ export async function renderCreate(
   const cfg = app.indexer.cfg;
 
   // ---------- circle ----------
-  const cBox = box("new buying circle");
+  const cBox = box("New buying circle");
   if (!cfg.circleTemplate) {
     cBox.body.append(
       notice(
-        `the circle template is not published on ${cfg.label} yet, so circles cannot be created here. the esmeralda testnet has it live.`,
+        `The circle template is not published on ${cfg.label} yet, so circles cannot be created here. The Esmeralda testnet has it live.`,
       ),
     );
-    const switchBtn = actionButton("switch to the esmeralda testnet", "btn-white", () => {
+    const switchBtn = actionButton("Switch to the Esmeralda testnet", "btn-white", () => {
       app.setNetwork("esmeralda");
       go("#/app/create");
     });
@@ -71,36 +71,36 @@ export async function renderCreate(
   const approversIn = el("textarea");
   approversIn.rows = 3;
   approversIn.className = "mono";
-  approversIn.placeholder = "one public key per line, 64 hex characters each";
+  approversIn.placeholder = "One public key per line, 64 hex characters each";
   if (app.myKey) approversIn.value = app.myKey;
   const thresholdIn = textInput();
   thresholdIn.value = "2";
   const auditorIn = textInput("mono");
-  auditorIn.placeholder = "optional, 64 hex characters";
+  auditorIn.placeholder = "Optional, 64 hex characters";
   // On a network with no circle template, the notice and the
   // switch are the whole box: the form does not render under
   // them, so nothing on the screen invites an action that can
   // only fail.
   if (cfg.circleTemplate) {
     cBox.body.append(
-      field("circle name", nameIn),
-      field("approvers", approversIn, "the people who confirm deliveries and sign overrides. each approver copies their public key from their own wallet card after connecting and sends it to you. your own key is filled in, keep it in the list if you will approve too."),
-      field("approval threshold", thresholdIn, "how many approvers must sign. a threshold of 1 means any single approver can confirm a delivery or execute an override on their own. most circles want at least 2."),
-      field("auditor (optional)", auditorIn, "a read-only overseer key, if the circle wants one."),
+      field("Circle name", nameIn),
+      field("Approvers", approversIn, "The people who confirm deliveries and sign overrides. Each approver copies their public key from their own wallet card after connecting and sends it to you. Your own key is filled in, keep it in the list if you will approve too."),
+      field("Approval threshold", thresholdIn, "How many approvers must sign. A threshold of 1 means any single approver can confirm a delivery or execute an override on their own. Most circles want at least 2."),
+      field("Auditor (optional)", auditorIn, "A read-only overseer key, if the circle wants one."),
     );
   }
   const createCircleBtn = actionButton("create circle", "btn-blue", async () => {
-    if (!cfg.circleTemplate) throw new Error("template not published on this network");
+    if (!cfg.circleTemplate) throw new Error("Template not published on this network");
     const account = requireWallet(app, "create a circle");
     if (!account) return;
     const approvers = keyList(approversIn.value);
-    if (!approvers.length) throw new Error("add at least one approver key");
+    if (!approvers.length) throw new Error("Add at least one approver key");
     const threshold = Number(thresholdIn.value);
     if (!Number.isInteger(threshold) || threshold < 1 || threshold > approvers.length)
-      throw new Error("the threshold must be between 1 and the approver count");
+      throw new Error("The threshold must be between 1 and the approver count");
     const auditor = auditorIn.value.trim().toLowerCase() || null;
     if (auditor && !/^[0-9a-f]{64}$/.test(auditor))
-      throw new Error("the auditor key is not 64 hex characters");
+      throw new Error("The auditor key is not 64 hex characters");
     await app.guardWalletNetwork();
     const { result } = await app.wallet.submit(
       B.buildCreateCircle(cfg.circleTemplate, nameIn.value.trim(), approvers, threshold, auditor, cfg.tenderTemplate),
@@ -114,12 +114,12 @@ export async function renderCreate(
   wrap.append(cBox.box);
 
   // ---------- tender ----------
-  const tBox = box("new tender");
+  const tBox = box("New tender");
   if (!cfg.tenderTemplate) {
     tBox.body.append(
-      notice(`the tender template is not published on ${cfg.label} yet. the esmeralda testnet has it live.`),
+      notice(`The tender template is not published on ${cfg.label} yet. The Esmeralda testnet has it live.`),
     );
-    const switchBtn2 = actionButton("switch to the esmeralda testnet", "btn-white", () => {
+    const switchBtn2 = actionButton("Switch to the Esmeralda testnet", "btn-white", () => {
       app.setNetwork("esmeralda");
       go("#/app/create");
     });
@@ -132,7 +132,7 @@ export async function renderCreate(
   const tForm = el("div");
   tForm.append(
     notice(
-      "costs, in plain words: creating and locking costs a small fee each time. the escrow is funded with exactly the budget cap from your account, and every seller needs the bond amount in theirs before they can bid.",
+      "Costs, in plain words: creating and locking costs a small fee each time. The escrow is funded with exactly the budget cap from your account, and every seller needs the bond amount in theirs before they can bid.",
     ),
   );
   tForm.append(notice(fundingGuidance(app.network)));
@@ -164,7 +164,7 @@ export async function renderCreate(
     }
   }
   const circlePick = el("select");
-  const pickDefault = el("option", undefined, "choose a circle this browser knows, or paste the address below");
+  const pickDefault = el("option", undefined, "Choose a circle this browser knows, or paste the address below");
   pickDefault.value = "";
   circlePick.append(pickDefault);
   for (const kc of knownCircles) {
@@ -178,7 +178,7 @@ export async function renderCreate(
   const specFile = el("input");
   specFile.type = "file";
   const specIn = textInput("mono");
-  specIn.placeholder = "or paste the hash, 64 hex characters";
+  specIn.placeholder = "Or paste the hash, 64 hex characters";
   const capIn = textInput();
   capIn.placeholder = "10000";
   const bondIn = textInput();
@@ -188,28 +188,28 @@ export async function renderCreate(
     i.value = value;
     return { node: field(label, i, hint), input: i };
   };
-  const bidW = win("bid window (epochs)", "24", "how long sellers can commit. an esmeralda epoch is about an hour, a mainnet epoch about twenty minutes.");
-  const revealW = win("reveal window (epochs)", "24", "how long sellers can reveal after bids close.");
-  const overrideW = win("override window (epochs)", "12", "how long the circle can replace the computed winner, with a published reason.");
-  const deliveryW = win("delivery window (epochs)", "48", "how long the winner has to deliver.");
-  const graceW = win("claim grace (epochs)", "24", "extra time after delivery for claims before the tender can expire.");
-  const disputeW = win("dispute window (epochs)", "24", "how long a delivery dispute can be resolved.");
+  const bidW = win("bid window (epochs)", "24", "How long sellers can commit. An Esmeralda epoch is about an hour, a Mainnet epoch about twenty minutes.");
+  const revealW = win("reveal window (epochs)", "24", "How long sellers can reveal after bids close.");
+  const overrideW = win("override window (epochs)", "12", "How long the circle can replace the computed winner, with a published reason.");
+  const deliveryW = win("delivery window (epochs)", "48", "How long the winner has to deliver.");
+  const graceW = win("claim grace (epochs)", "24", "Extra time after delivery for claims before the tender can expire.");
+  const disputeW = win("dispute window (epochs)", "24", "How long a delivery dispute can be resolved.");
   const apprIn = textInput();
   apprIn.value = "2";
   const dispIn = textInput();
   dispIn.value = "3";
   tForm.append(
     ...(knownCircles.length
-      ? [field("circle, from this browser", circlePick, "the featured circle and the circles this browser has opened. choosing one fills the address below.")]
+      ? [field("Circle, from this browser", circlePick, "The featured circle and the circles this browser has opened. Choosing one fills the address below.")]
       : []),
-    field("circle", circleIn, "the tender is created for this circle and registered on it in the next step."),
-    field("specification document", specFile, "the document that says exactly what is being bought. its sha-256 hash is locked into the rules. the document itself stays with the circle."),
-    field("specification hash", specIn),
-    field("budget cap (tari)", capIn, "the escrow is funded with exactly this much. it is the most the tender can pay."),
-    field("bond per bid (tari)", bondIn, "every seller posts this with their commitment. revealing returns it. staying silent forfeits it, half to the circle and half locked forever. if the tender expires with no award, an unrevealed bond returns whole instead."),
+    field("Circle", circleIn, "The tender is created for this circle and registered on it in the next step."),
+    field("Specification document", specFile, "The document that says exactly what is being bought. Its sha-256 hash is locked into the rules. The document itself stays with the circle."),
+    field("Specification hash", specIn),
+    field("Budget cap (tari)", capIn, "The escrow is funded with exactly this much. It is the most the tender can pay."),
+    field("Bond per bid (tari)", bondIn, "Every seller posts this with their commitment. Revealing returns it. Staying silent forfeits it, half to the circle and half locked forever. If the tender expires with no award, an unrevealed bond returns whole instead."),
     bidW.node, revealW.node, overrideW.node, deliveryW.node, graceW.node, disputeW.node,
-    field("approval threshold", apprIn, "approver signatures needed to confirm delivery or execute an override. a threshold of 1 gives a single approver full power. choose with care."),
-    field("dispute threshold", dispIn, "approver signatures needed to resolve a dispute. must be higher than the approval threshold and no higher than the circle's number of approvers."),
+    field("Approval threshold", apprIn, "Approver signatures needed to confirm delivery or execute an override. A threshold of 1 gives a single approver full power. Choose with care."),
+    field("Dispute threshold", dispIn, "Approver signatures needed to resolve a dispute. Must be higher than the approval threshold and no higher than the circle's number of approvers."),
   );
   specFile.addEventListener("change", () => {
     void (async () => {
@@ -230,20 +230,20 @@ export async function renderCreate(
   const stepFailed = (outcome: ActionOutcome, step: string): boolean => {
     if (outcome.kind !== "failed") return false;
     chainError(app, wrap, outcome);
-    status.textContent = `${step} failed on chain. nothing further was submitted.`;
+    status.textContent = `${step} failed on chain. Nothing further was submitted.`;
     return true;
   };
-  const createTenderBtn = actionButton("create tender, register it, and lock the escrow", "btn-blue", async () => {
-    if (!cfg.tenderTemplate) throw new Error("template not published on this network");
+  const createTenderBtn = actionButton("Create tender, register it, and lock the escrow", "btn-blue", async () => {
+    if (!cfg.tenderTemplate) throw new Error("Template not published on this network");
     const account = requireWallet(app, "create a tender, register it, and lock the escrow");
     if (!account) return;
     const circle = circleIn.value.trim();
-    if (!circle.startsWith("component_")) throw new Error("enter the circle address");
+    if (!circle.startsWith("component_")) throw new Error("Enter the circle address");
     const sub = await app.indexer.substate(circle);
-    if (!sub) throw new Error("that circle is down");
+    if (!sub) throw new Error("That circle is down");
     const circleState = decodeCircleState(sub.value);
     const spec = specIn.value.trim().toLowerCase();
-    if (!/^[0-9a-f]{64}$/.test(spec)) throw new Error("the specification hash is not 64 hex characters");
+    if (!/^[0-9a-f]{64}$/.test(spec)) throw new Error("The specification hash is not 64 hex characters");
     const rules: TenderRules = {
       specificationHash: spec,
       budgetCap: parseTari(capIn.value),
@@ -273,24 +273,24 @@ export async function renderCreate(
     await app.deriveIdentity();
     if (app.balance !== null && app.balance < rules.budgetCap)
       throw new Error(
-        `your account holds ${tari(app.balance)} tari, and locking this tender funds the escrow with the full budget cap of ${tari(rules.budgetCap)} tari, before fees. nothing was submitted. top up the account, or lower the cap.`,
+        `Your account holds ${tari(app.balance)} tari, and locking this tender funds the escrow with the full budget cap of ${tari(rules.budgetCap)} tari, before fees. Nothing was submitted. Top up the account, or lower the cap.`,
       );
-    status.textContent = "step 1 of 3: creating the tender. approve it in your wallet.";
+    status.textContent = "Step 1 of 3: creating the tender. Approve it in your wallet.";
     await app.guardWalletNetwork();
     const created = await app.wallet.submit(B.buildCreateTender(cfg.tenderTemplate, circle, rules));
     const tender = await findCreated(app, created.result, [account, circle], cfg.tenderTemplate);
     app.watch("tenders", tender);
-    status.textContent = "step 2 of 3: registering the tender on its circle. approve it in your wallet.";
+    status.textContent = "Step 2 of 3: registering the tender on its circle. Approve it in your wallet.";
     const reg = await app.submitAction(B.buildRegisterTender(circle, tender));
-    if (stepFailed(reg.outcome, "step 2 of 3: registering the tender")) return;
-    status.textContent = "step 3 of 3: locking the rules and funding the escrow to the cap. approve it in your wallet.";
+    if (stepFailed(reg.outcome, "Step 2 of 3: registering the tender")) return;
+    status.textContent = "Step 3 of 3: locking the rules and funding the escrow to the cap. Approve it in your wallet.";
     const lock = await app.submitAction(
       B.buildLockAndFund(account, tender, rules.budgetCap),
     );
-    if (stepFailed(lock.outcome, "step 3 of 3: locking the tender")) return;
+    if (stepFailed(lock.outcome, "Step 3 of 3: locking the tender")) return;
     if (lock.outcome.kind === "unconfirmed") {
       app.flash = {
-        text: "your tender was created and its lock was submitted, awaiting finalization. this page may not show the locked rules yet.",
+        text: "Your tender was created and its lock was submitted, awaiting finalization. This page may not show the locked rules yet.",
         txId: lock.outcome.txId,
       };
     }
@@ -300,12 +300,12 @@ export async function renderCreate(
     createTenderBtn,
     feeNote("createTender", "create tender"),
     feeNote("registerTender", "register tender"),
-    feeNote("lockAndFund", "lock and fund"),
+    feeNote("lockAndFund", "Lock and fund"),
     status,
   );
   tForm.append(
     notice(
-      "locking is the point of no return for the rules. after the lock transaction, the rules hash is fixed and the escrow holds exactly the cap, and anyone can check both from the tender record.",
+      "Locking is the point of no return for the rules. After the lock transaction, the rules hash is fixed and the escrow holds exactly the cap, and anyone can check both from the tender record.",
     ),
   );
   if (cfg.tenderTemplate) tBox.body.append(tForm);

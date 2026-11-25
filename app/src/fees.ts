@@ -69,5 +69,5 @@ export const TYPICAL_FEES: Record<FeeAction, bigint> = {
 
 /** The fee line shown beside an action before the wallet opens. */
 export function feeText(action: FeeAction): string {
-  return `typical fee about ${tari(TYPICAL_FEES[action])} tari. the wallet shows the exact cost before you approve.`;
+  return `Typical fee about ${tari(TYPICAL_FEES[action])} tari. The wallet shows the exact cost before you approve.`;
 }

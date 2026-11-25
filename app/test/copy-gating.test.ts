@@ -1,5 +1,5 @@
 // Copy and gating renders: the truthful network pill, the
-// builder-run labels and the bond expiry exception on the
+// featured-circle tender labels and the bond expiry exception on the
 // landing, the watched-scope note on the approvals screen,
 // and the create screen's forms staying hidden on an
 // unconfigured network.
@@ -98,29 +98,28 @@ const root = () => new FakeEl("div") as unknown as HTMLElement;
 
 describe("networkPill", () => {
   it("calls a configured network live and an unconfigured one unpublished", () => {
-    expect(networkPill(NETWORKS.esmeralda)).toBe("esmeralda testnet · live");
-    expect(networkPill(NETWORKS.mainnet)).toBe("mainnet · live");
+    expect(networkPill(NETWORKS.esmeralda)).toBe("Esmeralda testnet · Live");
+    expect(networkPill(NETWORKS.mainnet)).toBe("Mainnet · Live");
     expect(
       networkPill({
         ...NETWORKS.mainnet,
         circleTemplate: null,
         tenderTemplate: null,
       }),
-    ).toBe("mainnet · templates not published yet");
+    ).toBe("Mainnet · Templates not published yet");
   });
 });
 
 describe("landing copy", () => {
-  it("labels the featured circle's tenders as builder-run, never as live tenders", async () => {
+  it("labels the featured circle's tenders as recorded, never as live tenders", async () => {
     const app = new App();
     app.indexer.substate = async () => null;
     const r = root();
     await renderLanding(app, r, go);
     const text = (r as unknown as FakeEl).textContent;
     expect(text).toContain("Tenders from the featured circle");
-    expect(text).toContain(
-      "builder-run: run by the builders across their own accounts",
-    );
+    expect(text).toContain("Read straight from the chain");
+    expect(text).not.toContain("builder-run");
     expect(text).not.toContain("live tenders");
   });
 
@@ -132,7 +131,7 @@ describe("landing copy", () => {
     const text = (r as unknown as FakeEl).textContent;
     expect(text).toContain("half to the circle, half locked forever");
     expect(text).toContain(
-      "if the tender instead expires with no award, an unrevealed bond comes back whole",
+      "If the tender instead expires with no award, an unrevealed bond comes back whole",
     );
   });
 });
@@ -159,13 +158,13 @@ describe("create screen on an unconfigured network", () => {
     const r = root();
     await renderCreate(app, r, go);
     const text = (r as unknown as FakeEl).textContent;
-    expect(text).toContain("not published on mainnet yet");
-    expect(text).toContain("switch to the esmeralda testnet");
+    expect(text).toContain("not published on Mainnet yet");
+    expect(text).toContain("Switch to the Esmeralda testnet");
     // Neither form renders under its notice.
-    expect(text).not.toContain("circle name");
-    expect(text).not.toContain("approval threshold");
-    expect(text).not.toContain("budget cap (tari)");
-    expect(text).not.toContain("create tender, register it, and lock the escrow");
+    expect(text).not.toContain("Circle name");
+    expect(text).not.toContain("Approval threshold");
+    expect(text).not.toContain("Budget cap (tari)");
+    expect(text).not.toContain("Create tender, register it, and lock the escrow");
   });
 });
 
@@ -178,11 +177,11 @@ describe("create screen on esmeralda", () => {
     const r = root();
     await renderCreate(app, r, go);
     const text = (r as unknown as FakeEl).textContent;
-    expect(text).toContain("circle name");
-    expect(text).toContain("budget cap (tari)");
-    expect(text).toContain("circle, from this browser");
+    expect(text).toContain("Circle name");
+    expect(text).toContain("Budget cap (tari)");
+    expect(text).toContain("Circle, from this browser");
     expect(text).toContain(
-      "if the tender expires with no award, an unrevealed bond returns whole instead",
+      "If the tender expires with no award, an unrevealed bond returns whole instead",
     );
   });
 });

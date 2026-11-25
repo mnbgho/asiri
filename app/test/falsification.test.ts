@@ -265,12 +265,12 @@ describe("falsification section render", () => {
       expect(t).toContain(cap(c.title));
       expect(t).toContain(c.lie);
     }
-    expect(t).toContain("standalone verifier: 11 of 13 checks passed");
-    expect(t).toContain("app verifier: 14 of 15 checks passed");
-    expect(t).toContain("control, the gate tender, untampered");
+    expect(t).toContain("Standalone verifier: 11 of 13 checks passed");
+    expect(t).toContain("App verifier: 14 of 15 checks passed");
+    expect(t).toContain("Control, The gate tender, untampered");
     expect(t).toContain("13 of 13 checks passed in both verifiers");
-    expect(t).toContain("download the cards (json)");
-    expect(t).toContain("the verdict was right and the sentence was wrong");
+    expect(t).toContain("Download the cards (json)");
+    expect(t).toContain("The verdict was right and the sentence was wrong");
     // The boundary scan covers the falsification section only:
     // it is the last section on the screen, and the ledger
     // above it carries the standing "not burned" form, which

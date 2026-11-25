@@ -125,7 +125,7 @@ export interface CircleComponentState {
 const BOND_STATES = ["Held", "Returnable", "Returned", "Forfeited"];
 
 function arr(v: CborValue, what: string): CborValue[] {
-  if (!Array.isArray(v)) throw new Error(`expected an array for ${what}`);
+  if (!Array.isArray(v)) throw new Error(`Expected an array for ${what}`);
   return v;
 }
 /** An array with exactly n fields: a record with trailing or
@@ -139,25 +139,25 @@ function exact(v: CborValue, n: number, what: string): CborValue[] {
 function int(v: CborValue, what: string): bigint {
   if (typeof v === "bigint") return v;
   if (typeof v === "number") return BigInt(v);
-  throw new Error(`expected an integer for ${what}`);
+  throw new Error(`Expected an integer for ${what}`);
 }
 function num(v: CborValue, what: string): number {
   const n = int(v, what);
   if (n > BigInt(Number.MAX_SAFE_INTEGER) || n < BigInt(Number.MIN_SAFE_INTEGER))
-    throw new Error(`integer for ${what} is outside the safe range`);
+    throw new Error(`Integer for ${what} is outside the safe range`);
   return Number(n);
 }
 function hex(v: CborValue, what: string): string {
   if (v instanceof Uint8Array) return bytesToHex(v);
-  throw new Error(`expected bytes for ${what}`);
+  throw new Error(`Expected bytes for ${what}`);
 }
 function text(v: CborValue, what: string): string {
   if (typeof v === "string") return v;
-  throw new Error(`expected text for ${what}`);
+  throw new Error(`Expected text for ${what}`);
 }
 function bool(v: CborValue, what: string): boolean {
   if (typeof v === "boolean") return v;
-  throw new Error(`expected a boolean for ${what}`);
+  throw new Error(`Expected a boolean for ${what}`);
 }
 function opt<T>(v: CborValue, inner: (x: CborValue) => T): T | null {
   return v === null ? null : inner(v);
@@ -165,7 +165,7 @@ function opt<T>(v: CborValue, inner: (x: CborValue) => T): T | null {
 function addr(v: CborValue, tag: number, prefix: string, what: string): string {
   if (v instanceof Tagged && v.tag === tag && v.value instanceof Uint8Array)
     return prefix + bytesToHex(v.value);
-  throw new Error(`expected a tagged address for ${what}`);
+  throw new Error(`Expected a tagged address for ${what}`);
 }
 function keys(v: CborValue, what: string): string[] {
   return arr(v, what).map((k) => hex(k, what));
@@ -174,7 +174,7 @@ function enumName(v: CborValue, names: string[], what: string): string {
   const parts = arr(v, what);
   const idx = num(parts[0], what);
   const name = names[idx];
-  if (!name) throw new Error(`unknown ${what} index ${idx}`);
+  if (!name) throw new Error(`Unknown ${what} index ${idx}`);
   return name;
 }
 
@@ -182,7 +182,7 @@ function enumName(v: CborValue, names: string[], what: string): string {
 function vaultId(v: CborValue, what: string): string {
   if (v instanceof Tagged && v.tag === 132 && v.value instanceof Uint8Array)
     return "vault_" + bytesToHex(v.value);
-  throw new Error(`unexpected vault encoding for ${what}`);
+  throw new Error(`Unexpected vault encoding for ${what}`);
 }
 
 /** Split a component substate value into template address and state. */
@@ -193,7 +193,7 @@ export function splitComponent(root: CborValue): { template: string; state: Cbor
   const header = arr(first[0], "component header");
   const templateBytes = header[0];
   if (!(templateBytes instanceof Uint8Array))
-    throw new Error("component header does not start with template bytes");
+    throw new Error("Component header does not start with template bytes");
   const wrapped = arr(first[1], "component state wrapper");
   const state = arr(wrapped[0], "component state");
   return { template: "template_" + bytesToHex(templateBytes), state };
@@ -205,7 +205,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
   // encoding: 35 fields before a receipt exists, 36 after, with
   // the fields behind it shifted by one.
   if (raw.length !== 35 && raw.length !== 36)
-    throw new Error(`tender state has ${raw.length} fields, expected 35 or 36`);
+    throw new Error(`Tender state has ${raw.length} fields, expected 35 or 36`);
   const hasReceipt = raw.length === 36;
   const f: CborValue[] = hasReceipt
     ? raw
@@ -292,7 +292,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
       // an unresolved dispute carries only its first three fields.
       // Any other length is a malformed record, not a shorter form.
       if (g.length < 3 || g.length > 5)
-        throw new Error(`dispute record has ${g.length} fields`);
+        throw new Error(`Dispute record has ${g.length} fields`);
       return {
         evidenceHash: hex(g[0], "evidence_hash"),
         epoch: num(g[1], "epoch"),
@@ -362,7 +362,7 @@ export function decodeVaultBalance(root: CborValue): bigint {
     return null;
   };
   const balance = find(root);
-  if (balance === null) throw new Error("no balance found in the vault substate");
+  if (balance === null) throw new Error("No balance found in the vault substate");
   return balance;
 }
 
@@ -382,7 +382,7 @@ export function decodeAccountOwnerKey(root: CborValue): string {
   const slot = arr(container[1], "account key slot");
   const keyBytes = slot[0];
   if (!(keyBytes instanceof Uint8Array) || keyBytes.length !== 32)
-    throw new Error("account state does not carry a 32 byte owner key");
+    throw new Error("Account state does not carry a 32 byte owner key");
   return bytesToHex(keyBytes);
 }
 
@@ -441,14 +441,14 @@ export function extractWasm(root: CborValue): Uint8Array {
     }
   };
   walk(root);
-  if (best === null) throw new Error("no WASM binary in the template substate");
+  if (best === null) throw new Error("No WASM binary in the template substate");
   return best;
 }
 
 export function decodeCircleState(root: CborValue): CircleComponentState {
   const { template, state: f } = splitComponent(root);
   if (f.length !== 12)
-    throw new Error(`circle state has ${f.length} fields, expected 12`);
+    throw new Error(`Circle state has ${f.length} fields, expected 12`);
   return {
     template,
     name: text(f[0], "name"),
@@ -503,16 +503,16 @@ export function plainAddressError(address: string, err: unknown): string {
   // that merely starts with the prefix is not that kind of
   // address at all, and falls through to the message mapping.
   if (/^vault_[0-9a-f]{64}$/.test(address))
-    return "that address belongs to a vault. a vault holds funds; it is not a tender or a circle, so there is no record to open for it.";
+    return "That address belongs to a vault. A vault holds funds; it is not a tender or a circle, so there is no record to open for it.";
   if (/^resource_[0-9a-f]{64}$/.test(address))
-    return "that address belongs to a resource. a resource is the kind of thing a vault holds; it is not a tender or a circle, so there is no record to open for it.";
+    return "That address belongs to a resource. A resource is the kind of thing a vault holds; it is not a tender or a circle, so there is no record to open for it.";
   if (/^template_[0-9a-f]{64}$/.test(address))
-    return "that address belongs to a template. a template is the code that tenders and circles run; it is not itself a tender or a circle, so there is no record to open for it.";
+    return "That address belongs to a template. A template is the code that tenders and circles run; it is not itself a tender or a circle, so there is no record to open for it.";
   if (/^not found on /.test(msg) || /has no live value/.test(msg))
-    return "nothing was found at that address on this network. check the address, and that the app is showing the network it belongs to.";
+    return "Nothing was found at that address on this network. Check the address, and that the app is showing the network it belongs to.";
   if (/is down/.test(msg))
-    return "that component's record is not live on this network right now. it may have been replaced or removed.";
+    return "That component's record is not live on this network right now. It may have been replaced or removed.";
   if (DECODER_WORDING.test(msg))
-    return "that component is not a tender or a circle. it is a different kind of component, or it belongs to another network.";
+    return "That component is not a tender or a circle. It is a different kind of component, or it belongs to another network.";
   return msg;
 }

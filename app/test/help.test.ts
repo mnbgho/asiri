@@ -101,14 +101,14 @@ describe("help surface", () => {
     const t = text(r);
     for (const q of [
       "What is an epoch?",
-      "What happens if i never reveal my bid?",
+      "What happens if I never reveal my bid?",
       "How do bonds and forfeits work?",
       "What is an override, and what does it cost the circle?",
       "How does verification work, and what does could not be read mean?",
-      "Where does tari come from?",
-      "What does it cost to use asiri?",
-      "I lost my salt. can it be recovered?",
-      "My transaction failed. what do i do?",
+      "Where does Tari come from?",
+      "What does it cost to use Asiri?",
+      "I lost my salt. Can it be recovered?",
+      "My transaction failed. What do I do?",
     ]) {
       expect(t).toContain(q);
     }
@@ -122,8 +122,8 @@ describe("help surface", () => {
     expect(t).toContain("could not be read");
     expect(t).toContain("pilot circles are funded on request");
     expect(t).toContain("created only by burning xtm");
-    expect(t).toContain("about 0.0051 tari");
-    expect(t).toContain("there is no recovery path");
+    expect(t).toContain("About 0.0051 tari");
+    expect(t).toContain("There is no recovery path");
     expect(t).toContain("failed on chain");
   });
 });
@@ -131,15 +131,15 @@ describe("help surface", () => {
 describe("evidence controls", () => {
   it("the check control names the hash and keeps the document in the browser", () => {
     const c = evidenceCheckControl("ab".repeat(32)) as unknown as FakeEl;
-    expect(c.textContent).toContain("check a document against this hash:");
+    expect(c.textContent).toContain("Check a document against this hash:");
     expect(c.textContent).toContain("never leaves it");
     expect(c.textContent).toContain("byte for byte the one this hash was taken from");
   });
 
   it("the fill control offers to hash a document into a field", () => {
     const c = hashFileControl(() => {}, () => {}) as unknown as FakeEl;
-    expect(c.textContent).toContain("or pick the document and the app fills in its hash:");
-    expect(c.textContent).toContain("only the hash goes on chain");
+    expect(c.textContent).toContain("Or pick the document and the app fills in its hash:");
+    expect(c.textContent).toContain("Only the hash goes on chain");
   });
 });
 
@@ -150,10 +150,10 @@ describe("seller desk backup box", () => {
     await renderSeller(app, r, go);
     const t = text(r);
     expect(t).toContain("Back up your bids");
-    expect(t).toContain("whoever holds the file can reveal those bids");
+    expect(t).toContain("Whoever holds the file can reveal those bids");
     expect(t).toContain("there is no recovery path");
-    expect(t).toContain("import a backup file");
-    expect(t).not.toContain("download a plain backup");
+    expect(t).toContain("Import a backup file");
+    expect(t).not.toContain("Download a plain backup");
   });
 
   it("offers both downloads once a bid is saved", async () => {
@@ -170,8 +170,8 @@ describe("seller desk backup box", () => {
     const r = root();
     await renderSeller(app, r, go);
     const t = text(r);
-    expect(t).toContain("download a plain backup");
-    expect(t).toContain("download an encrypted backup");
+    expect(t).toContain("Download a plain backup");
+    expect(t).toContain("Download an encrypted backup");
     expect(t).toContain("if you forget it, the encrypted file cannot be opened");
   });
 });

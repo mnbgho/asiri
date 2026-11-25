@@ -18,7 +18,7 @@ import { deadlineText } from "./time";
 // what network discovery has found in this browser, and
 // nothing beyond them.
 export const INBOX_SCOPE_NOTE =
-  "this screen gathers from the featured circle, the circles and tenders this browser has opened or saved a bid on, and the circles and tenders network discovery has found in this browser. a circle or tender outside that reach is not gathered here, so an empty list means nothing was found in that reach, not that nothing exists.";
+  "This screen gathers from the featured circle, the circles and tenders this browser has opened or saved a bid on, and the circles and tenders network discovery has found in this browser. A circle or tender outside that reach is not gathered here, so an empty list means nothing was found in that reach, not that nothing exists.";
 
 export interface InboxItem {
   kind:
@@ -43,7 +43,7 @@ export function personalItems(args: {
 }): InboxItem[] {
   const { me, bids, tenders, circles, network, epoch } = args;
   const items: InboxItem[] = [];
-  const name = (t: TenderComponentState) => t.circleName || "a sealed tender";
+  const name = (t: TenderComponentState) => t.circleName || "A sealed tender";
 
   // Reveals due: a saved bid whose tender sits in its reveal
   // window with the commitment still sealed. The bid's own
@@ -60,8 +60,8 @@ export function personalItems(args: {
       title: `${name(t)}: your bid is still sealed`,
       detail:
         t.revealDeadline !== null
-          ? `reveal it from bid and reveal before the window closes, ${deadlineText(network, t.revealDeadline, epoch)}. a bid nobody reveals stays sealed, and its bond is forfeited.`
-          : "reveal it from bid and reveal while the reveal window is open. a bid nobody reveals stays sealed, and its bond is forfeited.",
+          ? `Reveal it from bid and reveal before the window closes, ${deadlineText(network, t.revealDeadline, epoch)}. A bid nobody reveals stays sealed, and its bond is forfeited.`
+          : "Reveal it from bid and reveal while the reveal window is open. A bid nobody reveals stays sealed, and its bond is forfeited.",
       dest: "#/app/seller",
     });
   }

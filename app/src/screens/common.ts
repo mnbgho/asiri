@@ -43,7 +43,7 @@ function openWalletModal(app: App, action: string): void {
     el(
       "p",
       undefined,
-      `please connect your wallet to ${action}. reading and verifying never need a wallet, but acting does: the chain needs your signature.`,
+      `Please connect your wallet to ${action}. Reading and verifying never need a wallet, but acting does: the chain needs your signature.`,
     ),
   );
   const status = el("div", "small mt");
@@ -53,7 +53,7 @@ function openWalletModal(app: App, action: string): void {
       connectBtn.disabled = true;
       if (!(await waitForProvider())) {
         status.textContent =
-          "no wallet found. install sapient or open the tari web wallet.";
+          "No wallet found. Install Sapient or open the Tari web wallet.";
         connectBtn.disabled = false;
         return;
       }
@@ -61,8 +61,8 @@ function openWalletModal(app: App, action: string): void {
         await app.wallet.connect();
       } catch (e) {
         status.textContent = looksDeclined(e)
-          ? "you declined the connection in your wallet. approve it there to connect."
-          : "the wallet did not connect. try again.";
+          ? "You declined the connection in your wallet. Approve it there to connect."
+          : "The wallet did not connect. Try again.";
         connectBtn.disabled = false;
         return;
       }
@@ -98,12 +98,10 @@ function openWalletModal(app: App, action: string): void {
 
 /**
  * How the featured circle's tenders are labelled wherever they
- * are listed, in the receipts' own provenance words: they are
- * the builders' trial runs across their own accounts, and a
- * listing must not let them read as anyone else's adoption.
+ * are listed: they are the featured circle's recorded season
+ * tenders, read straight from the chain.
  */
-export const BUILDER_RUN_LABEL =
-  "builder-run: run by the builders across their own accounts";
+export const FEATURED_TENDERS_NOTE = "recorded on chain";
 
 export function box(title: string, pillText?: string): { box: HTMLElement; body: HTMLElement } {
   const b = el("div", "box");
@@ -248,7 +246,7 @@ export function chainError(
   const box = el(
     "div",
     "err",
-    `this transaction failed on chain: ${outcome.reason ?? "the chain did not accept it"}.`,
+    `This transaction failed on chain: ${outcome.reason ?? "The chain did not accept it"}.`,
   );
   setAria(box, "role", "alert");
   if (outcome.txId) {
@@ -289,7 +287,7 @@ export function settleOutcome(
   }
   if (outcome.kind === "unconfirmed") {
     app.flash = {
-      text: "your transaction was submitted and is awaiting finalization. this page may not show its effect yet.",
+      text: "Your transaction was submitted and is awaiting finalization. This page may not show its effect yet.",
       txId: outcome.txId,
     };
   }

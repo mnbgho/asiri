@@ -104,7 +104,7 @@ export async function gatherCircleRecord(
   const progress = opts.onProgress ?? (() => {});
   const startedAt = Date.now();
 
-  progress("reading the treasury…");
+  progress("Reading the treasury…");
   let balance: bigint | null = null;
   const treasury = await attempt(
     (async () => {
@@ -124,7 +124,7 @@ export async function gatherCircleRecord(
   let passDigest = false;
   if (indexer.cfg.tenderTemplate) {
     passDigest = true;
-    progress("reading the tender template's code…");
+    progress("Reading the tender template's code…");
     const troot = await attempt(
       (async () => {
         const sub = await indexer.substate(indexer.cfg.tenderTemplate!, {
@@ -146,19 +146,19 @@ export async function gatherCircleRecord(
       entries.push({
         address: tAddr,
         read: "unreadable",
-        note: "the export reached its time limit before this tender was read. export again to try it once more.",
+        note: "The export reached its time limit before this tender was read. Export again to try it once more.",
         verification: uncheckedVerification(
-          "the export reached its time limit before the checks could be run",
+          "The export reached its time limit before the checks could be run",
         ),
       });
       continue;
     }
-    progress(`reading tender ${i + 1} of ${total}…`);
+    progress(`Reading tender ${i + 1} of ${total}…`);
     const read = await attempt(
       (async () => {
         const sub = await indexer.substate(tAddr);
         if (!sub)
-          throw new Error("that tender's record is not live on the indexer");
+          throw new Error("That tender's record is not live on the indexer");
         return decodeTenderState(sub.value);
       })(),
       tenderBudgetMs,
@@ -169,15 +169,15 @@ export async function gatherCircleRecord(
         read: "unreadable",
         note:
           read.kind === "stalled"
-            ? "the read stalled on the indexer and the export moved on rather than wait without limit. export again to try it once more."
+            ? "The read stalled on the indexer and the export moved on rather than wait without limit. Export again to try it once more."
             : plainAddressError(tAddr, read.error),
         verification: uncheckedVerification(
-          "the tender's state could not be read, so the checks were not run",
+          "The tender's state could not be read, so the checks were not run",
         ),
       });
       continue;
     }
-    progress(`checking tender ${i + 1} of ${total}…`);
+    progress(`Checking tender ${i + 1} of ${total}…`);
     const checked = await attempt(
       verifyTender(indexer, tAddr, passDigest ? { templateDigest } : {}),
       tenderBudgetMs,
@@ -187,7 +187,7 @@ export async function gatherCircleRecord(
       verification = summarizeReport(checked.value.report);
     } else if (checked.kind === "stalled") {
       verification = uncheckedVerification(
-        "the checks could not be completed: the indexer reads stalled past the export's per-tender time limit. export again to try once more.",
+        "The checks could not be completed: the indexer reads stalled past the export's per-tender time limit. Export again to try once more.",
       );
     } else {
       verification = uncheckedVerification(

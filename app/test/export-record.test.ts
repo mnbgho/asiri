@@ -194,10 +194,10 @@ describe("gathering a circle record", () => {
     await gatherCircleRecord(indexer, CIRCLE, circle([T_OK]), {
       onProgress: (m) => messages.push(m),
     });
-    expect(messages[0]).toBe("reading the treasury…");
-    expect(messages).toContain("reading the tender template's code…");
-    expect(messages).toContain("reading tender 1 of 1…");
-    expect(messages).toContain("checking tender 1 of 1…");
+    expect(messages[0]).toBe("Reading the treasury…");
+    expect(messages).toContain("Reading the tender template's code…");
+    expect(messages).toContain("Reading tender 1 of 1…");
+    expect(messages).toContain("Checking tender 1 of 1…");
   });
 
   it("carries a stalled tender as unreadable and still finishes, in bounded time", async () => {

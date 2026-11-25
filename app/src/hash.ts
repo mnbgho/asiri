@@ -11,7 +11,7 @@ export async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
 }
 
 function u128be(v: bigint): Uint8Array {
-  if (v < 0n || v >= 1n << 128n) throw new Error(`amount out of range: ${v}`);
+  if (v < 0n || v >= 1n << 128n) throw new Error(`Amount out of range: ${v}`);
   const out = new Uint8Array(16);
   let m = v;
   for (let i = 15; i >= 0; i--) {
@@ -80,7 +80,7 @@ export function commitmentBytes(
   salt: Uint8Array,
   paymentIdentityHex: string,
 ): Uint8Array {
-  if (salt.length !== 32) throw new Error("salt must be 32 bytes");
+  if (salt.length !== 32) throw new Error("Salt must be 32 bytes");
   return concat([
     enc("asiri-bid-v1"),
     u128be(price),

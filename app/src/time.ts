@@ -29,10 +29,10 @@ export function durationText(seconds: number): string {
   return `about ${Math.round(days)} days`;
 }
 
-const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
-  "jan", "feb", "mar", "apr", "may", "jun",
-  "jul", "aug", "sep", "oct", "nov", "dec",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
 function hhmm(d: Date): string {
@@ -48,7 +48,7 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
-/** "14:30 today", "09:15 tomorrow", "14:30 on fri 21 nov". */
+/** "14:30 today", "09:15 tomorrow", "14:30 on Fri 21 Nov". */
 export function clockText(when: Date, now: Date): string {
   const t = hhmm(when);
   if (sameDay(when, now)) return `${t} today`;
@@ -95,7 +95,7 @@ export function revealWindowText(
   now: Date = new Date(),
 ): string | null {
   if (bidDeadline === null || revealDeadline === null) return null;
-  return `reveals open at epoch ${bidDeadline} and close at ${deadlineText(network, revealDeadline, currentEpoch, now)}`;
+  return `Reveals open at epoch ${bidDeadline} and close at ${deadlineText(network, revealDeadline, currentEpoch, now)}`;
 }
 
 /**

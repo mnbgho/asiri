@@ -1,21 +1,21 @@
-# asiri app
+# Asiri app
 
-The web app for asiri, sealed tenders for buying circles on tari
-ootle. It is a static site: no application server, no database,
+The web app for Asiri, sealed tenders for buying circles on Tari
+Ootle. It is a static site: no application server, no database,
 no keys held. The chain is the database.
 
-- reads come from the public ootle indexer for the selected
+- Reads come from the public Ootle indexer for the selected
   network (a first visit opens on the first network with
-  templates configured, the esmeralda testnet today; the sidebar
-  switch moves between mainnet and esmeralda),
-- writes are transaction requests built in the browser and
-  approved in the visitor's own wallet (sapient or the tari web
+  templates configured, the Esmeralda testnet today; the sidebar
+  switch moves between Mainnet and Esmeralda),
+- Writes are transaction requests built in the browser and
+  approved in the visitor's own wallet (Sapient or the Tari web
   wallet, through the window.tari provider),
-- the verify screen runs the same checks as the standalone
+- The verify screen runs the same checks as the standalone
   script in `../scripts/verify.py`, in the browser, with no
   wallet at all.
 
-## run it
+## Run it
 
 ```sh
 npm install
@@ -28,16 +28,16 @@ The encoding tests pin every argument and record layout against
 values produced by the pinned rust crates (tari_bor), so a layout
 drift in either direction fails loudly.
 
-## layout
+## Layout
 
-- `src/cbor.ts` the tari_bor encoding dialect, encoder and decoder
-- `src/args.ts` instruction argument builders
-- `src/builders.ts` one instruction list per template action
-- `src/model.ts` the public info records and their decoders
-- `src/state.ts` component state decoders for indexer substates
-- `src/indexer.ts` the indexer read client
-- `src/wallet.ts` the window.tari provider flow
-- `src/verify.ts` the verifier's checks
-- `src/screens/` the landing page and the app screens (overview,
+- `src/cbor.ts` The tari_bor encoding dialect, encoder and decoder
+- `src/args.ts` Instruction argument builders
+- `src/builders.ts` One instruction list per template action
+- `src/model.ts` The public info records and their decoders
+- `src/state.ts` Component state decoders for indexer substates
+- `src/indexer.ts` The indexer read client
+- `src/wallet.ts` The window.tari provider flow
+- `src/verify.ts` The verifier's checks
+- `src/screens/` The landing page and the app screens (overview,
   tender record, circle, create, seller desk, approvals, verify,
   results)

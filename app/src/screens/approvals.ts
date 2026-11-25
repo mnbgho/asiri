@@ -26,21 +26,21 @@ export async function renderApprovals(
   const wrap = el("div");
   root.append(wrap);
 
-  const keyBox = box("your approver key");
+  const keyBox = box("Your approver key");
   const keyIn = textInput("mono");
-  keyIn.placeholder = "your public key, 64 hex characters";
+  keyIn.placeholder = "Your public key, 64 hex characters";
   if (app.myKey) keyIn.value = app.myKey;
   keyBox.body.append(
     field(
-      "public key",
+      "Public key",
       keyIn,
-      "used only to find the items waiting for you. the templates check your wallet's signature, not this field.",
+      "Used only to find the items waiting for you. The templates check your wallet's signature, not this field.",
     ),
   );
   const showError = (e: unknown) => errorBox(wrap, e);
   const saveBtn = actionButton("save key", "btn-white", () => {
     const v = keyIn.value.trim().toLowerCase();
-    if (!/^[0-9a-f]{64}$/.test(v)) throw new Error("that is not 64 hex characters");
+    if (!/^[0-9a-f]{64}$/.test(v)) throw new Error("That is not 64 hex characters");
     app.setMyKey(v);
     go("#/app/approvals");
   }, showError);
@@ -52,12 +52,12 @@ export async function renderApprovals(
   // records the approver list below reads. Its scope note
   // stands on the screen, because the gathering reaches only
   // what this browser can see.
-  const inbox = box("needs you now");
-  inbox.body.append(el("div", "empty", "reading the circles and tenders this browser can see…"));
+  const inbox = box("Needs you now");
+  inbox.body.append(el("div", "empty", "Reading the circles and tenders this browser can see…"));
   wrap.append(inbox.box);
 
-  const list = box("waiting for you");
-  list.body.append(el("div", "empty", "reading the circles and tenders this browser can see…"));
+  const list = box("Waiting for you");
+  list.body.append(el("div", "empty", "Reading the circles and tenders this browser can see…"));
   wrap.append(list.box);
 
   const me = app.myKey;
@@ -166,21 +166,21 @@ export async function renderApprovals(
           );
           items.push(item, feeNote("signOverride"));
         }
-        const oBox = box(`propose an override on ${t.circleName || "this tender"}`);
+        const oBox = box(`Propose an override on ${t.circleName || "this tender"}`);
         const chosenIn = textInput("mono");
-        chosenIn.placeholder = "winner's payment identity, or blank to cancel the tender";
+        chosenIn.placeholder = "Winner's payment identity, or blank to cancel the tender";
         const rationaleIn = el("textarea");
         rationaleIn.rows = 3;
-        rationaleIn.placeholder = "why the computed winner should not win. only its hash goes on chain, so publish this exact text where your circle can read it, or nobody can check the reason.";
+        rationaleIn.placeholder = "Why the computed winner should not win. Only its hash goes on chain, so publish this exact text where your circle can read it, or nobody can check the reason.";
         oBox.body.append(
-          field("chosen seller", chosenIn),
-          field("rationale", rationaleIn, "the hash of this exact text is recorded. anyone with the text can prove it matches."),
+          field("Chosen seller", chosenIn),
+          field("Rationale", rationaleIn, "The hash of this exact text is recorded. Anyone with the text can prove it matches."),
         );
         const propBtn = actionButton("propose override", "btn-white", async () => {
           const chosen = chosenIn.value.trim().toLowerCase() || null;
           if (chosen && !/^[0-9a-f]{64}$/.test(chosen))
-            throw new Error("the chosen seller is not 64 hex characters");
-          if (!rationaleIn.value) throw new Error("an override needs a rationale");
+            throw new Error("The chosen seller is not 64 hex characters");
+          if (!rationaleIn.value) throw new Error("An override needs a rationale");
           const digest = bytesToHex(
             await sha256(new TextEncoder().encode(rationaleIn.value)),
           );
@@ -204,18 +204,18 @@ export async function renderApprovals(
         items.push(item, feeNote("confirmDelivery"));
       }
       if (t.state === "Disputed" && mine && t.dispute) {
-        const dBox = box(`resolve the dispute on ${t.circleName || "this tender"}`);
-        kvNode(dBox.body, "evidence hash", hashSpan(t.dispute.evidenceHash));
+        const dBox = box(`Resolve the dispute on ${t.circleName || "this tender"}`);
+        kvNode(dBox.body, "Evidence hash", hashSpan(t.dispute.evidenceHash));
         dBox.body.append(evidenceCheckControl(t.dispute.evidenceHash));
         const votes = t.disputeVotes.filter((v) => v.signer === me);
         if (!votes.length) {
           const rationaleIn = el("textarea");
           rationaleIn.rows = 2;
-          rationaleIn.placeholder = "why the dispute resolves this way. only its hash goes on chain, so publish this exact text where your circle can read it.";
-          dBox.body.append(field("rationale", rationaleIn));
+          rationaleIn.placeholder = "Why the dispute resolves this way. Only its hash goes on chain, so publish this exact text where your circle can read it.";
+          dBox.body.append(field("Rationale", rationaleIn));
           const row = el("div", "srow");
           const decide = async (payWinner: boolean) => {
-            if (!rationaleIn.value) throw new Error("a resolution needs a rationale");
+            if (!rationaleIn.value) throw new Error("A resolution needs a rationale");
             const digest = bytesToHex(
               await sha256(new TextEncoder().encode(rationaleIn.value)),
             );
@@ -225,12 +225,12 @@ export async function renderApprovals(
             );
           };
           row.append(
-            actionButton("pay the winner", "btn-blue", () => decide(true), showError),
-            actionButton("refund the circle", "btn-white", () => decide(false), showError),
+            actionButton("Pay the winner", "btn-blue", () => decide(true), showError),
+            actionButton("Refund the circle", "btn-white", () => decide(false), showError),
           );
           dBox.body.append(row, feeNote("resolveDispute"));
         } else {
-          dBox.body.append(notice("you have already voted on this dispute."));
+          dBox.body.append(notice("You have already voted on this dispute."));
         }
         wrap.append(dBox.box);
       }
@@ -256,8 +256,8 @@ export async function renderApprovals(
         "div",
         "empty",
         me
-          ? "nothing needs you as a seller or a winner on the circles and tenders this browser can see."
-          : "save your key above, or commit a bid from bid and reveal, and this list gathers what needs you: reveals due, claims open, bonds back, refunds to collect.",
+          ? "Nothing needs you as a seller or a winner on the circles and tenders this browser can see."
+          : "Save your key above, or commit a bid from bid and reveal, and this list gathers what needs you: reveals due, claims open, bonds back, refunds to collect.",
       ),
     );
   } else {
@@ -275,11 +275,11 @@ export async function renderApprovals(
   list.body.replaceChildren();
   if (!me) {
     list.body.append(
-      el("div", "empty", "save your approver key above and this screen gathers everything waiting for your signature."),
+      el("div", "empty", "Save your approver key above and this screen gathers everything waiting for your signature."),
     );
   } else if (!items.length) {
     list.body.append(
-      el("div", "empty", "nothing is waiting for your signature on the circles and tenders this browser can see."),
+      el("div", "empty", "Nothing is waiting for your signature on the circles and tenders this browser can see."),
     );
   } else {
     for (const item of items) list.body.append(item);

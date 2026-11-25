@@ -393,7 +393,7 @@ describe("mainnet results screen", () => {
     const r = new FakeEl("div") as unknown as HTMLElement;
     await renderResults(app, r, () => {});
     const t = (r as unknown as FakeEl).textContent;
-    expect(t).toContain("tari mainnet");
+    expect(t).toContain("Tari Mainnet");
     expect(t).toContain("664,908 microtari");
     for (const rec of MAINNET_TENDER_RECORDS) {
       expect(t).toContain(cap(rec.title));
@@ -404,9 +404,9 @@ describe("mainnet results screen", () => {
     expect(t).toContain(
       "15 of 15 checks passed in the standalone verifier, 15 of 15 in the app verifier",
     );
-    expect(t).toContain("proven lowest revealed price");
+    expect(t).toContain("Proven lowest revealed price");
     expect(t).toContain("14 tari, by seller2");
-    expect(t).toContain("nothing paid, expired at epoch 39240");
+    expect(t).toContain("Nothing paid, expired at epoch 39240");
     // The real receipts are presented: check rows from the
     // receipt files, their provenance and hashes, and the
     // download. The interim wording that said the records
@@ -417,32 +417,32 @@ describe("mainnet results screen", () => {
     expect(t).toContain(
       "award 11000000 at counter 1, best valid reveal 11000000",
     );
-    expect(t).toContain("receipt provenance: indexer transaction bodies");
+    expect(t).toContain("Receipt provenance: indexer transaction bodies");
     expect(t).toContain(
-      "receipt sha256: 9e1da09ac76fc682a4ebe03bbe36acf9e682735e90328127cd0cfca1ad6acd51",
+      "Receipt sha256: 9e1da09ac76fc682a4ebe03bbe36acf9e682735e90328127cd0cfca1ad6acd51",
     );
-    expect(t).toContain("download the receipt (json)");
+    expect(t).toContain("Download the receipt (json)");
     expect(t).not.toContain("they do not include a receipt download");
     // The seventh tender: the attack test, its receipt, and
     // the attack record with the chain's own rejections.
-    expect(t).toContain("seven tenders ran on mainnet");
+    expect(t).toContain("Seven tenders ran on Mainnet");
     expect(t).toContain("The attack tender");
     expect(t).toContain(
       `python3 scripts/verify.py ${MAINNET_ATTACK_RECORD.tender} --network mainnet`,
     );
     expect(t).toContain(
-      "receipt sha256: 128a855fa956b4c30f90a09a44ea3c6b5ad8fb5841cecc6bb429098757c00526",
+      "Receipt sha256: 128a855fa956b4c30f90a09a44ea3c6b5ad8fb5841cecc6bb429098757c00526",
     );
     expect(t).toContain("The attacks: eighteen, all rejected");
     expect(t).toContain(
-      "rejected · seller has already committed in this tender",
+      "Rejected · seller has already committed in this tender",
     );
     expect(t).toContain(
-      "rejected · an override can only choose a valid revealed bid",
+      "Rejected · an override can only choose a valid revealed bid",
     );
-    expect(t).toContain("rejected · payment already claimed");
+    expect(t).toContain("Rejected · payment already claimed");
     expect(t).toContain(
-      "one signature is below the circle's threshold of 2",
+      "One signature is below the circle's threshold of 2",
     );
     expect(t).toContain("still seller1, with no override recorded");
     expect(t).toContain(

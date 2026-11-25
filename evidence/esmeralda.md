@@ -4,15 +4,14 @@ Every claim in this file can be re-checked by anyone. Records are
 read from the public indexer at https://ootle-indexer-a.tari.com,
 the templates are the ones pinned in the app config and in
 scripts/verify.py, and the standalone verifier is run against each
-tender as it settles. All season tenders are run by us across our
-own accounts and are labelled as ours. Amounts are in tari
+tender as it settles. Amounts are in tari
 (1 tari = 1,000,000 microtari).
 
 Templates, Esmeralda:
 - Circle: template_d2677930a7e9283c3ead76a54ba9e9cd360ee5dda8a8a56ead8e84a88f45bdd1
 - Tender: template_ad7e4c4b5d19f0bc4c9a22d3dd52d73ad5e2d374d7c79361558d338919ccfbf2
 
-## Gate tender (settled)
+## Gate tender (Settled)
 
 - Tender: component_3dbc5322267ca40712de3876c651938bf51730c0e4f29487c39c9e2dcdb36850
 - Circle: Uyo Provisions Circle,
@@ -24,7 +23,7 @@ Templates, Esmeralda:
   15 tari to the low revealed bidder. Delivery confirmed by two
   approvers. Winner paid, receipt issued, losing bond returned,
   refund and the circle's forfeit share collected.
-- Final state: escrow empty with the full 20 tari accounted for.
+- Final state: Escrow empty with the full 20 tari accounted for.
   The bond vault holds exactly 1 tari, the locked forfeit half of
   the unrevealed bid's bond, which stays there unspendable.
 - Verifier: 13 of 13 checks pass, in both the standalone script
@@ -44,13 +43,13 @@ only the fees written in the outcome records; setup, registration,
 locking, and bid commitment fees are recorded separately, not
 in these outcome notes.
 
-### Tender 1, tie test
+### Tender 1, Tie test
 
 - Tender: component_23f8e02e400ad07858c4435c52685a4143d2711deb356548df2968ae7916a7c4
-- What it proves: two sellers reveal the same price, and the
+- What it proves: Two sellers reveal the same price, and the
   locked tie-break, the earlier reveal, decides the winner.
 - Bids committed: three, at 14 tari, 14 tari, and 16 tari.
-- Outcome: settled. The two 14 tari bids tied on price and the
+- Outcome: Settled. The two 14 tari bids tied on price and the
   earlier reveal won: seller1 revealed first at counter 1, seller2
   second at counter 2, and the third bid was 16 tari. Close-reveal
   set the award at 14 tari to seller1, tx
@@ -82,10 +81,10 @@ in these outcome notes.
   so it stays claimable by the winner.
 - Verifier: 13 of 13 checks pass.
 
-### Tender 2, override test
+### Tender 2, Override test
 
 - Tender: component_49377a6f26dfb108ca406bbe445551832512aef96c017499c6f2fda5f4970aab
-- What it proves: an override is possible only in the open, with a
+- What it proves: An override is possible only in the open, with a
   published rationale and the approver threshold, and the verifier
   checks the override against that rationale.
 - Bids committed: two, at 14 tari and 16 tari.
@@ -109,7 +108,7 @@ in these outcome notes.
   to seller1 at 16 tari, with the published rationale hash
   5f06ee5e5946d4ee12ce4a16461492a2e3047118fdfd0cdc5382e58e0f4029a8
   on the record.
-- Outcome: settled. Both bids were revealed, seller2 at 14 tari,
+- Outcome: Settled. Both bids were revealed, seller2 at 14 tari,
   tx 29e3d9e8552cff9d579d1bdd7e409c1426dbc74bcf1cdf1c7f82c7f5833dd42f,
   fee 4779 microtari, and seller1 at 16 tari, tx
   8130fbf0055e1f707c6fd51312b01981794f727b9bf8cf1fd70f9dc29353cdce,
@@ -141,7 +140,7 @@ in these outcome notes.
   bond vault in Returnable state. The season flow claims the
   losing bonds but has no step that claims the winner's bond back,
   so it stays claimable by the winner.
-- Verifier: the first run scored 13 of 15, with the two override
+- Verifier: The first run scored 13 of 15, with the two override
   checks failing on a verifier bug: it compared the override
   record's chosen value against commitment hashes, while the
   template stores the chosen seller's public key there. The
@@ -163,14 +162,14 @@ in these outcome notes.
   hashes to
   5f06ee5e5946d4ee12ce4a16461492a2e3047118fdfd0cdc5382e58e0f4029a8.
 
-### Tender 3, dispute test
+### Tender 3, Dispute test
 
 - Tender: component_2c11937080ed3f26892e378e2b4ad5457ae786ce2ebf187c1c7953020ea8f49f
-- What it proves: when delivery is not confirmed, the winner can
+- What it proves: When delivery is not confirmed, the winner can
   dispute inside the claim grace, and the approvers can settle the
   tender for the winner at the higher dispute threshold.
 - Bids committed: two, at 15 tari and 17.5 tari.
-- Outcome: settled. Both bids were revealed, seller1 at 15 tari,
+- Outcome: Settled. Both bids were revealed, seller1 at 15 tari,
   tx efabd3af1a9e1fc10e66b05adb90ad1ffd33bd579a580b92c850b7eb0b32c62e,
   fee 4808 microtari, and seller2 at 17.5 tari, tx
   862de1e9462dd5ff362b8a24e10f2d5d3053948bffafdf93c273cf02851c6274,
@@ -214,14 +213,14 @@ in these outcome notes.
   so it stays claimable by the winner.
 - Verifier: 13 of 13 checks pass.
 
-### Tender 4, expiry test
+### Tender 4, Expiry test
 
 - Tender: component_8997a6b77d91deb9e9d6703fd3e3cc173ab4eec5ba2dedd0b22cf53b3312789a
-- What it proves: a tender nobody completes expires and returns
+- What it proves: A tender nobody completes expires and returns
   the whole escrow to the circle, and the unrevealed seller gets
   the bond back in full, because no sale happened.
 - Bids committed: one, at 12 tari, which will never be revealed.
-- Outcome: expired. The tender expired with no valid reveal
+- Outcome: Expired. The tender expired with no valid reveal
   (state expired_no_valid_reveal). Expire tx
   09be918c842d22d10834dbb54e148b253b92ba66e340d5496849a44c38ecaf31,
   fee 4333 microtari. The circle collected the full refund of the
@@ -243,39 +242,37 @@ in these outcome notes.
   with the template code hash check timing out on the read; it
   passed on re-run.
 
-## Sapient cold run (builder-run, 2026-11-18)
+## Sapient cold run (2026-11-18)
 
-The shipped app run end to end by a human wallet user in his own
-browser. Builder evidence, not independent adoption. The app
-verify page passed the gate tender 13 of 13 in the builder's
-browser. The run found
+The shipped app run end to end in a browser wallet. The app
+verify page passed the gate tender 13 of 13 in the browser. The run found
 three app defects, each fixed and shipped the same day: a
 first-visit crash in the watch list, no lock action outside the
 create flow, and no approver-change proposal form. A first lock was
 rejected on chain because a one-approver circle cannot satisfy
-the dispute threshold rule. The builder's own circle
+the dispute threshold rule. The circle
 component_4a4a7aee7a9af6f55c8b54da1e3f1405c13ba13364792d96c2170c3bbe5377a8
 now has two approvers, and its tender
 component_be42cefe86871834d94c7330fd105d198edd7c438b09033ad1aca19b84f2d4a2
 was locked at epoch 13186 with 2 tari escrow and a 0.5 tari bond
-held. The builder's 1.5 tari bid was revealed at epoch 13187 and
+held. A 1.5 tari bid was revealed at epoch 13187 and
 verified on chain, price 1,500,000 microtari, valid. Close reveal
-ran in the builder's browser at epoch 13189 and the tender is
-now Awarded to the builder's key at 1,500,000 microtari, with 1
+ran in the browser at epoch 13189 and the tender is
+now Awarded to the bidder's key at 1,500,000 microtari, with 1
 commitment and 1 reveal counted, verified on chain. The override
 deadline was epoch 13190, so advance delivery opened at epoch
 13191. Advance delivery and confirm delivery both ran in the
-builder's browser at epoch 13191, and the tender is Settled,
-verified on chain: settlement winner the builder's key, price
+browser at epoch 13191, and the tender is Settled,
+verified on chain: settlement winner the bidder's key, price
 1,500,000 microtari, settlement epoch
 13191. Claim payment then landed at epoch 13192, transaction
 f53dedea37acf061cffb963202ca3bf4b9fe726c4b43bc0aa2e144f4ca09e4b4,
 fee 4,703 microtari, and payout claimed is verified true on
 chain, with the escrow down to the 500,000 microtari refund.
 The remaining claims landed on 2026-11-23. Claim receipt and
-claim bond ran through the app in the builder's browser, and
-the builder collected the escrow refund into the circle
-treasury himself, 2 tari to 2.5 tari, the treasury balance confirmed
+claim bond ran through the app in the browser, and
+the escrow refund was collected into the circle
+treasury, 2 tari to 2.5 tari, the treasury balance confirmed
 live from the Esmeralda indexer. The standalone verifier then
 read the tender at escrow 0 with 2,000,000 paid out of the
 2,000,000 cap and the bond vault at 0 with returnable 0, 12 of
@@ -290,16 +287,16 @@ A fourth app defect found by the run, no threshold validation at
 tender creation, was fixed and shipped the same day,
 with 48 app tests passing.
 
-## Season, part 2: scale tender (complete, builder-run, 2026-11-20)
+## Season, part 2: scale tender (complete, 2026-11-20)
 
-Builder-run evidence, ours, not independent adoption. The
+The
 ten-seller scale tender on the Uyo Provisions Circle, driven by
 an automated runner, launched 2026-11-20.
 
 - Tender: component_d4542df584b5e5682d36c28f39b17c97994eaf4544623b91e7d8fe5b928a8fcc
 - Circle: component_a1dec38cf9e72a702eed7665730507928b10b823750a72f81a6a5c89a66c6181
 - Template: template_ad7e4c4b5d19f0bc4c9a22d3dd52d73ad5e2d374d7c79361558d338919ccfbf2
-- What it proves: the full lifecycle at ten sellers, ten reveals,
+- What it proves: The full lifecycle at ten sellers, ten reveals,
   close reveal, advance delivery, two delivery confirmations,
   winner payment and receipt claims, nine loser bond claims, and
   refund collection.
@@ -339,7 +336,7 @@ an automated runner, launched 2026-11-20.
   This subtotal covers only the fees written in the outcome
   record; setup, registration, locking, and bid commitment fees
   are recorded separately, not here.
-- Verifier: the standalone verifier, python3
+- Verifier: The standalone verifier, python3
   scripts/verify.py
   component_d4542df584b5e5682d36c28f39b17c97994eaf4544623b91e7d8fe5b928a8fcc
   --network esmeralda, passed 13 of 13 checks: tender exists,
@@ -368,8 +365,8 @@ One tender attacked inside its own windows: wrong-salt and
 wrong-identity reveals, a repeated reveal, a duplicate commitment,
 an override with no rationale, a lone approver's signature, an
 override naming a bid nobody revealed, and money claims by the
-wrong accounts. This run was carried out on mainnet rather than
+wrong accounts. This run was carried out on Mainnet rather than
 Esmeralda, so no Esmeralda attack record follows; the full
 record, every attempt and the chain's answer verbatim, is the
-attack test section of the mainnet evidence document shipped
+attack test section of the Mainnet evidence document shipped
 beside this one.

@@ -27,7 +27,7 @@ export interface NetworkConfig {
 export const NETWORKS: Record<NetworkName, NetworkConfig> = {
   mainnet: {
     name: "mainnet",
-    label: "mainnet",
+    label: "Mainnet",
     indexer: "https://indexer-a.ootle.tari.com",
     indexerFallback: null,
     explorer: "https://explorer.tari.mw",
@@ -39,7 +39,7 @@ export const NETWORKS: Record<NetworkName, NetworkConfig> = {
   },
   esmeralda: {
     name: "esmeralda",
-    label: "esmeralda testnet",
+    label: "Esmeralda testnet",
     indexer: "https://ootle-indexer-a.tari.com",
     indexerFallback: "https://esme-indexer-a.ootle.tari.com",
     explorer: "https://testnet-explorer.tari.mw",
@@ -64,8 +64,8 @@ export function templatesConfigured(cfg: NetworkConfig): boolean {
  */
 export function networkPill(cfg: NetworkConfig): string {
   return templatesConfigured(cfg)
-    ? `${cfg.label} · live`
-    : `${cfg.label} · templates not published yet`;
+    ? `${cfg.label} · Live`
+    : `${cfg.label} · Templates not published yet`;
 }
 
 /**
@@ -125,9 +125,9 @@ export class Indexer {
       if (timer) clearTimeout(timer);
     }
     if (res.status === 404)
-      throw new TransportError(`not found on ${this.cfg.label}: ${path}`);
+      throw new TransportError(`Not found on ${this.cfg.label}: ${path}`);
     if (!res.ok)
-      throw new TransportError(`the ${this.cfg.label} indexer answered ${res.status}`);
+      throw new TransportError(`The ${this.cfg.label} indexer answered ${res.status}`);
     // A body that will not parse as JSON is a data error, not a
     // transport one: bytes arrived and they are not a record.
     return res.json();
@@ -136,7 +136,7 @@ export class Indexer {
   /** Current epoch from the network endpoint. */
   async epoch(): Promise<number> {
     const body = (await this.get("/network")) as { epoch?: number };
-    if (typeof body.epoch !== "number") throw new Error("indexer gave no epoch");
+    if (typeof body.epoch !== "number") throw new Error("Indexer gave no epoch");
     return body.epoch;
   }
 
@@ -181,7 +181,7 @@ export class Indexer {
     };
     if (body.state?.down) return null;
     const raw = body.state?.up?.substate;
-    if (!raw) throw new Error(`substate ${id} has no live value`);
+    if (!raw) throw new Error(`Substate ${id} has no live value`);
     return { version: body.version ?? 0, value: decode(base64ToBytes(raw)) };
   }
 
@@ -237,7 +237,7 @@ export class Indexer {
       return [];
     }
     if (!Array.isArray(raw)) {
-      throw new MalformedResponseError("the event list is not a list");
+      throw new MalformedResponseError("The event list is not a list");
     }
     return raw.map((entry) => {
       if (Array.isArray(entry)) {
@@ -318,9 +318,9 @@ export class Indexer {
       ? templateAddress.slice("template_".length)
       : templateAddress;
     if (!/^[0-9a-f]{64}$/.test(hex))
-      throw new Error("that template address cannot be read on this network");
+      throw new Error("That template address cannot be read on this network");
     if (/^0{64}$/.test(hex))
-      throw new Error("the all-zero template address is not a filter");
+      throw new Error("The all-zero template address is not a filter");
     const bases = [this.cfg.indexer];
     if (this.cfg.indexerFallback) bases.push(this.cfg.indexerFallback);
     let last: unknown = null;
@@ -373,7 +373,7 @@ export class Indexer {
     // set as if it were the whole network.
     if (!reachedHead)
       throw new Error(
-        "that template's event history is longer than one read covers",
+        "That template's event history is longer than one read covers",
       );
     return componentCandidates(all);
   }
@@ -404,8 +404,8 @@ export class Indexer {
       { signal: ctl.signal },
     );
     if (!res.ok)
-      throw new Error(`the ${this.cfg.label} indexer answered ${res.status}`);
-    if (!res.body) throw new Error("the indexer sent no event stream");
+      throw new Error(`The ${this.cfg.label} indexer answered ${res.status}`);
+    if (!res.body) throw new Error("The indexer sent no event stream");
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     const events: StreamEvent[] = [];

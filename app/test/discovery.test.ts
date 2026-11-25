@@ -725,7 +725,7 @@ describe("overview discovery rendering", () => {
     expect(rootEl.textContent).toContain("featured circle tenders");
     expect(rootEl.textContent).toContain("watched tender");
     expect(rootEl.textContent).not.toContain("discovered on the network");
-    expect(rootEl.textContent).toContain("reading the network's event record");
+    expect(rootEl.textContent).toContain("reads this network's public event record");
 
     release();
     await flush();
@@ -735,11 +735,11 @@ describe("overview discovery rendering", () => {
     // discovered circle.
     expect(rootEl.textContent).toContain("discovered circle tender");
     expect(rootEl.textContent).toContain("lone discovered tender");
-    expect(rootEl.textContent).toContain("discovered on the network");
+    expect(rootEl.textContent).toContain("Discovered on the network");
     expect(rootEl.textContent).toContain(
-      "discovery found 1 circle and 2 tenders on this network, read just now.",
+      "Discovery found 1 circle and 2 tenders on this network, read just now.",
     );
-    expect(rootEl.textContent).toContain("open circle");
+    expect(rootEl.textContent).toContain("Open circle");
     // The pass was cached for the next screen that gathers.
     expect(readDiscoveryCache("esmeralda")?.circles).toEqual([C_DISC]);
     expect(readDiscoveryCache("esmeralda")?.tenders).toEqual([
@@ -795,11 +795,11 @@ describe("overview discovery rendering", () => {
     // One stream per template: circles first, then tenders.
     expect(streams).toBe(2);
     expect(rootEl.textContent).toContain(
-      "discovery found 0 circles and 0 tenders on this network",
+      "Discovery found 0 circles and 0 tenders on this network",
     );
-    expect(rootEl.textContent).toContain("no public tenders are listed on mainnet yet");
+    expect(rootEl.textContent).toContain("No public tenders are listed on Mainnet yet");
     expect(rootEl.textContent).not.toContain(
-      "there is nothing to discover on mainnet yet",
+      "There is nothing to discover on Mainnet yet",
     );
   });
 
@@ -821,8 +821,8 @@ describe("overview discovery rendering", () => {
       }) as typeof app.indexer.templateEventComponents;
       const rootEl = new FakeEl("div");
       await renderOverview(app, rootEl as unknown as HTMLElement, () => {});
-      expect(rootEl.textContent).toContain("there is nothing to discover on mainnet yet");
-      expect(rootEl.textContent).toContain("no public tenders are listed on mainnet yet");
+      expect(rootEl.textContent).toContain("There is nothing to discover on Mainnet yet");
+      expect(rootEl.textContent).toContain("No public tenders are listed on Mainnet yet");
       expect(streams).toBe(0);
     } finally {
       Object.assign(NETWORKS.mainnet, savedMainnet);
@@ -851,7 +851,7 @@ describe("overview discovery rendering", () => {
     await flush();
     expect(rootEl.textContent).toContain("featured circle tenders");
     expect(rootEl.textContent).toContain(
-      "discovery could not read the network this time.",
+      "Discovery could not read the network this time.",
     );
     expect(readDiscoveryCache("esmeralda")).toBeNull();
   });

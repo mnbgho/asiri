@@ -47,7 +47,7 @@ describe("withdrawalError", () => {
 
   it("blocks on an unread treasury balance rather than proposing blind", () => {
     expect(withdrawalError(2_000_000n, ACCOUNT, null)).toContain(
-      "the treasury balance could not be read",
+      "The treasury balance could not be read",
     );
   });
 

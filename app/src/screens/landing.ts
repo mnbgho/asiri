@@ -26,7 +26,7 @@ import {
 } from "../mainnet-results-data";
 import { LEDGER } from "../proof-data";
 import { decodeCircleState, decodeTenderState } from "../state";
-import { BUILDER_RUN_LABEL, money } from "./common";
+import { money } from "./common";
 
 export type RigKind = "peek" | "rules" | "friend" | "money";
 
@@ -38,7 +38,7 @@ export interface RigAnswer {
 
 function attackByKey(key: string): MainnetAttack {
   const a = MAINNET_ATTACKS.find((x) => x.key === key);
-  if (!a) throw new Error(`attack missing: ${key}`);
+  if (!a) throw new Error(`Attack missing: ${key}`);
   return a;
 }
 
@@ -98,23 +98,23 @@ export function rigAnswer(kind: RigKind): RigAnswer {
     case "peek": {
       const s = MAINNET_ATTACK_SEALED_BID;
       return {
-        call: "> call: read the price inside a sealed commitment",
+        call: "> Call: Read the price inside a sealed commitment",
         rejected: [
-          "rejected · there is no method to call. a commitment is a hash of the price, a salt only the seller holds, and the seller's payment identity. the only opening is the owner's own reveal, inside the reveal window.",
-          `observed on mainnet · on the attack tender, ${s.by}'s ${money(BigInt(s.priceMicro))} bid was committed and never revealed. the tender settled around it and both verifiers passed it in full, and its price never entered the record. the bid stayed sealed, and its bond forfeited on the recorded split.`,
+          "Rejected · There is no method to call. A commitment is a hash of the price, a salt only the seller holds, and the seller's payment identity. The only opening is the owner's own reveal, inside the reveal window.",
+          `Observed on Mainnet · On the attack tender, ${s.by}'s ${money(BigInt(s.priceMicro))} bid was committed and never revealed. The tender settled around it and both verifiers passed it in full, and its price never entered the record. The bid stayed sealed, and its bond forfeited on the recorded split.`,
         ],
-        source: "impossible by construction, and observed live on mainnet: the attack tender's unrevealed bid ended the tender still sealed. its record is on the results page.",
+        source: "Impossible by construction, and observed live on Mainnet: the attack tender's unrevealed bid ended the tender still sealed. Its record is on the results page.",
       };
     }
     case "rules": {
       const a = attackByKey("update-rules");
       return {
-        call: "> call: update_rules, to set the budget cap again after the tender has locked",
+        call: "> Call: update_rules, to set the budget cap again after the tender has locked",
         rejected: [
-          "rejected · the rules are hashed and frozen at lock and fund, and there is no setter on a locked tender. both verifiers recompute the rules hash from the record on every run, so an edited record fails its first check.",
-          `rejected · ${a.rejection}. the chain's own words on transaction ${a.tx}: the operator's update_rules call after the lock, refused on mainnet.`,
+          "Rejected · The rules are hashed and frozen at lock and fund, and there is no setter on a locked tender. Both verifiers recompute the rules hash from the record on every run, so an edited record fails its first check.",
+          `Rejected · ${a.rejection}. The chain's own words on transaction ${a.tx}: the operator's update_rules call after the lock, refused on Mainnet.`,
         ],
-        source: "impossible by construction, and refused live on mainnet: the attack tender's record is on the results page.",
+        source: "Impossible by construction, and refused live on Mainnet: the attack tender's record is on the results page.",
       };
     }
     case "friend": {
@@ -122,15 +122,15 @@ export function rigAnswer(kind: RigKind): RigAnswer {
       const unrevealed = attackByKey("override-unrevealed");
       const o = MAINNET_ATTACK_OVERRIDE;
       return {
-        call: "> call: override the award to a friendlier seller",
+        call: "> Call: Override the award to a friendlier seller",
         rejected: [
-          "the one legal path is an override: a published rationale whose hash sits in the record, and approver signatures at the circle's threshold. below that bar, no override stands and the computed award is the one that settles.",
-          `rejected · ${zero.rejection}. transaction ${zero.tx}: an override proposal with an all-zero rationale hash, refused on mainnet.`,
-          `rejected · ${unrevealed.rejection}. transaction ${unrevealed.tx}: an override proposal choosing a bid nobody revealed, refused on mainnet.`,
-          `not enough signatures: an override for ${o.chosenAccount} was proposed (transaction ${o.proposeTx}) and signed by one approver (transaction ${o.signTx}), below the threshold of ${o.threshold}. a live read straight after showed the award unchanged, still ${o.awardWinner}, with no override recorded.`,
-          "and there is no award method to call instead: the tender template's method list has none. the winner is computed inside close_reveal.",
+          "The one legal path is an override: a published rationale whose hash sits in the record, and approver signatures at the circle's threshold. Below that bar, no override stands and the computed award is the one that settles.",
+          `Rejected · ${zero.rejection}. Transaction ${zero.tx}: an override proposal with an all-zero rationale hash, refused on Mainnet.`,
+          `Rejected · ${unrevealed.rejection}. Transaction ${unrevealed.tx}: an override proposal choosing a bid nobody revealed, refused on Mainnet.`,
+          `Not enough signatures: an override for ${o.chosenAccount} was proposed (transaction ${o.proposeTx}) and signed by one approver (transaction ${o.signTx}), below the threshold of ${o.threshold}. A live read straight after showed the award unchanged, still ${o.awardWinner}, with no override recorded.`,
+          "And there is no award method to call instead: the tender template's method list has none. The winner is computed inside close_reveal.",
         ],
-        source: "live on mainnet: the attack tender's override attempts are on the results page.",
+        source: "Live on Mainnet: the attack tender's override attempts are on the results page.",
       };
     }
     case "money": {
@@ -139,25 +139,25 @@ export function rigAnswer(kind: RigKind): RigAnswer {
       const twice = attackByKey("claim-payment-twice");
       const refund = attackByKey("release-refund-direct");
       return {
-        call: "> call: take the escrow out of the tender",
+        call: "> Call: Take the escrow out of the tender",
         rejected: [
-          "escrow leaves only through the template's own settlement paths: paying the winner after delivery, resolving a dispute, or refunding the circle. there is no withdrawal method to call.",
-          `rejected · ${loser.rejection}. transaction ${loser.tx}: the loser's claim on the payment, refused on mainnet.`,
-          `rejected · ${bond.rejection}. transaction ${bond.tx}: a bond claim from an account that never bid, refused on mainnet.`,
-          `rejected · ${twice.rejection}. transaction ${twice.tx}: the winner's second claim on the payment, refused on mainnet.`,
-          `rejected · ${refund.rejection}. transaction ${refund.tx}: a direct release_refund call on the tender itself, refused by the component's own access rules.`,
+          "Escrow leaves only through the template's own settlement paths: paying the winner after delivery, resolving a dispute, or refunding the circle. There is no withdrawal method to call.",
+          `Rejected · ${loser.rejection}. Transaction ${loser.tx}: the loser's claim on the payment, refused on Mainnet.`,
+          `Rejected · ${bond.rejection}. Transaction ${bond.tx}: a bond claim from an account that never bid, refused on Mainnet.`,
+          `Rejected · ${twice.rejection}. Transaction ${twice.tx}: the winner's second claim on the payment, refused on Mainnet.`,
+          `Rejected · ${refund.rejection}. Transaction ${refund.tx}: a direct release_refund call on the tender itself, refused by the component's own access rules.`,
         ],
-        source: "live on mainnet: the attack tender's claim attempts are on the results page.",
+        source: "Live on Mainnet: the attack tender's claim attempts are on the results page.",
       };
     }
   }
 }
 
 const RIG_BUTTONS: [RigKind, string][] = [
-  ["peek", "peek at the sealed bids"],
-  ["rules", "change the budget after bids"],
-  ["friend", "award my friend instead"],
-  ["money", "move the escrow to my wallet"],
+  ["peek", "Peek at the sealed bids"],
+  ["rules", "Change the budget after bids"],
+  ["friend", "Award my friend instead"],
+  ["money", "Move the escrow to my wallet"],
 ];
 
 function sealArt(): HTMLElement {
@@ -166,7 +166,7 @@ function sealArt(): HTMLElement {
   setAria(
     art,
     "aria-label",
-    "a sealed tender, drawn as concentric seals around a lock",
+    "A sealed tender, drawn as concentric seals around a lock",
   );
   const ring1 = el("div", "seal-ring seal-ring-outer");
   const ring2 = el("div", "seal-ring seal-ring-inner");
@@ -175,10 +175,10 @@ function sealArt(): HTMLElement {
   lock.append(el("span", "seal-keyhole"));
   art.append(ring1, ring2, shackle, lock);
   for (const [cls, text] of [
-    ["seal-chip chip-lt", "rules locked"],
-    ["seal-chip chip-rt", "budget escrowed"],
-    ["seal-chip chip-lb", "bids sealed as hashes"],
-    ["seal-chip chip-rb", "opened only by their owners"],
+    ["seal-chip chip-lt", "Rules locked"],
+    ["seal-chip chip-rt", "Budget escrowed"],
+    ["seal-chip chip-lb", "Bids sealed as hashes"],
+    ["seal-chip chip-rb", "Opened only by their owners"],
   ] as const) {
     art.append(el("span", cls, text));
   }
@@ -220,15 +220,15 @@ export async function renderLanding(
   const signin = el("button", "signin");
   const disc = el("span", "disc", "a");
   signin.append(
-    document.createTextNode("open the app"),
+    document.createTextNode("Open the app"),
     disc,
-    el("span", "wordmark", "asiri"),
+    el("span", "wordmark", "Asiri"),
   );
   signin.addEventListener("click", () => go("#/app/overview"));
   const menu = el("div", "lp-menu");
   menu.append(verpill, links, signin);
   const burger = el("button", "lp-burger burger");
-  setAria(burger, "aria-label", "open the menu");
+  setAria(burger, "aria-label", "Open the menu");
   setAria(burger, "aria-expanded", "false");
   burger.append(el("span"), el("span"), el("span"));
   const setMenuOpen = (open: boolean): void => {
@@ -241,7 +241,7 @@ export async function renderLanding(
     if (!open && has)
       nav.className = parts.filter((c) => c !== "menu-open").join(" ");
     setAria(burger, "aria-expanded", open ? "true" : "false");
-    setAria(burger, "aria-label", open ? "close the menu" : "open the menu");
+    setAria(burger, "aria-label", open ? "Close the menu" : "Open the menu");
   };
   burger.addEventListener("click", () => {
     setMenuOpen(!nav.className.split(/\s+/).includes("menu-open"));
@@ -261,24 +261,24 @@ export async function renderLanding(
   // Hero, centred at 896px over the dot grid and the glow.
   const hero = el("section", "hero");
   const heroIn = el("div", "hero-in");
-  heroIn.append(el("span", "badge", "sealed tenders for buying circles"));
+  heroIn.append(el("span", "badge", "Sealed tenders for buying circles"));
   const h1 = el("h1");
   h1.append(
-    document.createTextNode("Everyone says their tender is fair. asiri shows you "),
-    el("span", "b", "the proof."),
+    document.createTextNode("Everyone says their tender is fair. Asiri shows you "),
+    el("span", "b", "The proof."),
   );
   heroIn.append(
     h1,
     el(
       "p",
       "sub",
-      "buying circles lock the rules and the budget before bidding opens. sellers bid in secret. the template awards the lowest valid revealed price, and even the buyer cannot peek.",
+      "Buying circles lock the rules and the budget before bidding opens. Sellers bid in secret. The template awards the lowest valid revealed price, and even the buyer cannot peek.",
     ),
   );
   const cta = el("div", "cta");
-  const launch = el("button", "btn", "launch the app");
+  const launch = el("button", "btn", "Launch the app");
   launch.addEventListener("click", () => go("#/app/overview"));
-  const verify = el("button", "btn btn-white", "verify a tender");
+  const verify = el("button", "btn btn-white", "Verify a tender");
   verify.addEventListener("click", () => go("#/app/verify"));
   cta.append(launch, verify);
   // The proof strip: the mainnet record as a row of facts
@@ -292,19 +292,19 @@ export async function renderLanding(
     c.append(el("span", "n", n), el("span", "cap", cap));
     return c;
   };
-  strip.append(factCell(String(facts.tenders), "tenders run on mainnet"));
+  strip.append(factCell(String(facts.tenders), "Tenders run on Mainnet"));
   if (facts.checks) {
     strip.append(
       factCell(
         `${facts.checks.passed} of ${facts.checks.total}`,
-        "checks passed by two verifiers",
+        "Checks passed by two verifiers",
       ),
     );
   }
   strip.append(
-    factCell(String(facts.attacksRefused), "attacks refused by the chain"),
+    factCell(String(facts.attacksRefused), "Attacks refused by the chain"),
   );
-  const recordLink = el("a", "ps-link", "read the mainnet record →");
+  const recordLink = el("a", "ps-link", "Read the Mainnet record →");
   recordLink.href = "#/app/results";
   strip.append(recordLink);
   heroIn.append(
@@ -322,14 +322,14 @@ export async function renderLanding(
   const fh = el("div", "blk-head");
   fh.append(
     el("h2", undefined, "Tenders from the featured circle"),
-    el("p", undefined, `read straight from the chain · ${BUILDER_RUN_LABEL}`),
+    el("p", undefined, "Read straight from the chain"),
   );
   feed.append(fh);
   const feedBody = el("div");
-  feedBody.append(el("div", "empty", "reading the network…"));
+  feedBody.append(el("div", "empty", "Reading the network…"));
   feed.append(feedBody);
   const feedClose = el("div", "center-row");
-  const openApp = el("button", "btn", "open the app");
+  const openApp = el("button", "btn", "Open the app");
   openApp.addEventListener("click", () => go("#/app/overview"));
   feedClose.append(openApp);
   feed.append(feedClose);
@@ -341,28 +341,28 @@ export async function renderLanding(
   for (const [letter, head, cap] of [
     [
       "A",
-      "award by template",
-      "no person picks the winner. the template computes it.",
+      "Award by template",
+      "No person picks the winner. The template computes it.",
     ],
     [
       "S",
       "sealed bids",
-      "a bid is a hash and a bond. the price goes nowhere.",
+      "A bid is a hash and a bond. The price goes nowhere.",
     ],
     [
       "I",
       "immutable rules",
-      "locked before bidding opens. edited by nobody, ever.",
+      "Locked before bidding opens. Edited by nobody, ever.",
     ],
     [
       "R",
-      "reveal to win",
-      "only opened bids can win. a bid nobody opens cannot win.",
+      "Reveal to win",
+      "Only opened bids can win. A bid nobody opens cannot win.",
     ],
     [
       "I",
       "inspect everything",
-      "every tender record re-checks in the open, wallet or not.",
+      "Every tender record re-checks in the open, wallet or not.",
     ],
   ] as const) {
     const cell = el("div", "lcell");
@@ -383,58 +383,58 @@ export async function renderLanding(
   const hh = el("div", "blk-head");
   hh.append(
     el("h2", undefined, "How it works"),
-    el("p", undefined, "seven steps, in the order they run. the money sits in the template from the lock to the payment."),
+    el("p", undefined, "Seven steps, in the order they run. The money sits in the template from the lock to the payment."),
   );
   how.append(hh);
   const steps = el("div", "lsteps");
   const stepData: [string, string, string, string, string][] = [
     [
       "1",
-      "form a circle",
-      "the buyers form a circle and name its approvers: the members whose signatures confirm delivery, settle disputes, and can override an award.",
-      "start a circle",
+      "Form a circle",
+      "The buyers form a circle and name its approvers: the members whose signatures confirm delivery, settle disputes, and can override an award.",
+      "Start a circle",
       "#/app/create",
     ],
     [
       "2",
-      "lock the rules and the budget",
-      "the circle publishes what it is buying, the budget cap, the bond, and the windows. the template hashes the rules and freezes them, and the full budget moves into the tender's vault in the same step. a tender cannot award money it does not hold.",
-      "create the tender",
+      "Lock the rules and the budget",
+      "The circle publishes what it is buying, the budget cap, the bond, and the windows. The template hashes the rules and freezes them, and the full budget moves into the tender's vault in the same step. A tender cannot award money it does not hold.",
+      "Create the tender",
       "#/app/create",
     ],
     [
       "3",
       "sellers commit sealed bids",
-      "each seller posts the bond and a hash of their price. the chain records that a bid exists, and nothing of the price: it is never transmitted with the bid, and nobody can read it.",
-      "bid on a tender",
+      "Each seller posts the bond and a hash of their price. The chain records that a bid exists, and nothing of the price: it is never transmitted with the bid, and nobody can read it.",
+      "Bid on a tender",
       "#/app/seller",
     ],
     [
       "4",
-      "bids open only on reveal",
-      "when the reveal window opens, each seller opens their own bid. a bid nobody opens stays sealed forever, and it cannot win.",
-      "reveal a bid",
+      "Bids open only on reveal",
+      "When the reveal window opens, each seller opens their own bid. A bid nobody opens stays sealed forever, and it cannot win.",
+      "Reveal a bid",
       "#/app/seller",
     ],
     [
       "5",
-      "the lowest revealed bid wins",
-      "the template computes the award itself: the lowest valid revealed price, ties to the earliest reveal. no person picks the winner.",
-      "see the awards proven",
+      "The lowest revealed bid wins",
+      "The template computes the award itself: the lowest valid revealed price, ties to the earliest reveal. No person picks the winner.",
+      "See the awards proven",
       "#/app/results",
     ],
     [
       "6",
-      "delivery is confirmed",
-      "the winner delivers what was bought, and the circle's approvers confirm the delivery at their threshold. no confirmation, no payment.",
-      "the approvals screen",
+      "Delivery is confirmed",
+      "The winner delivers what was bought, and the circle's approvers confirm the delivery at their threshold. No confirmation, no payment.",
+      "The approvals screen",
       "#/app/approvals",
     ],
     [
       "7",
-      "then the winner is paid",
-      "the template pays the winner from the escrow and returns the unspent budget to the circle. the whole run stays on the record, and two verifiers recompute it.",
-      "read the proof",
+      "Then the winner is paid",
+      "The template pays the winner from the escrow and returns the unspent budget to the circle. The whole run stays on the record, and two verifiers recompute it.",
+      "Read the proof",
       "#/app/results",
     ],
   ];
@@ -458,21 +458,21 @@ export async function renderLanding(
     el(
       "p",
       undefined,
-      "the four ways a tender gets rigged, each one tried against a real tender on mainnet. peeking cannot even be called: the template has no method for it, and on the attack tender a bid that was never revealed stayed sealed to the end, unable to win. the other three were called inside the tender's own windows, and the chain refused every one. the answers quote the record itself: the refused transactions by id, and the sealed bid that never opened.",
+      "The four ways a tender gets rigged, each one tried against a real tender on Mainnet. Peeking cannot even be called: the template has no method for it, and on the attack tender a bid that was never revealed stayed sealed to the end, unable to win. The other three were called inside the tender's own windows, and the chain refused every one. The answers quote the record itself: the refused transactions by id, and the sealed bid that never opened.",
     ),
   );
   const rigBtns = el("div", "rig-btns");
   const console_ = el("div", "rig-console");
   setAria(console_, "aria-live", "polite");
   const consoleHead = () =>
-    el("div", "cm", "asiri template · mainnet attack record");
+    el("div", "cm", "Asiri template · Mainnet attack record");
   const fillConsole = (a: RigAnswer): void => {
     console_.replaceChildren(
       consoleHead(),
       el("div", undefined, a.call),
       ...a.rejected.map((line) => el("div", "rj", line)),
       el("div", "ok", a.source),
-      el("div", "ok", "the tender is untouched."),
+      el("div", "ok", "The tender is untouched."),
     );
   };
   // The console opens on the first attack's answer, not empty:
@@ -497,9 +497,9 @@ export async function renderLanding(
   faqLeft.append(el("h2", undefined, "Some questions, answered"));
   const flinks = el("div", "flinks");
   for (const [label, hash] of [
-    ["run the verifier", "#/app/verify"],
-    ["read the receipts", "#/app/results"],
-    ["see the falsification cards", "#/app/results"],
+    ["Run the verifier", "#/app/verify"],
+    ["Read the receipts", "#/app/results"],
+    ["See the falsification cards", "#/app/results"],
   ] as const) {
     const a = el("a", undefined, `${label} `);
     a.href = hash;
@@ -511,32 +511,32 @@ export async function renderLanding(
   const acc = el("div", "acc");
   const qa: [string, string][] = [
     [
-      "who is asiri for?",
-      "groups that already buy together: shop networks restocking the same goods, cooperatives buying inputs, restaurant groups, ngo field offices, community treasuries. if your group pools money to buy, the tender is where it leaks.",
+      "Who is Asiri for?",
+      "Groups that already buy together: shop networks restocking the same goods, cooperatives buying inputs, restaurant groups, ngo field offices, community treasuries. If your group pools money to buy, the tender is where it leaks.",
     ],
     [
-      "can the buyer see the bids early?",
-      "no. a bid on chain is a hash of the price, a salt only the seller holds, and the seller's payment identity. there is no method that returns a price, no admin key, and no operator in the settlement path who could be asked, bribed, or hacked for one.",
+      "Can the buyer see the bids early?",
+      "No. A bid on chain is a hash of the price, a salt only the seller holds, and the seller's payment identity. There is no method that returns a price, no admin key, and no operator in the settlement path who could be asked, bribed, or hacked for one.",
     ],
     [
-      "what exactly is proven?",
-      "that the winner is the lowest valid revealed price under rules locked before bidding, that every reveal matches a commitment posted inside the window, and that the money moved only on delivery confirmation, a signed public override, a dispute resolution, or a refund. what is never claimed: that no lower bid existed among sellers who stayed silent. silence cannot win, which is why the lowest bidder reveals.",
+      "What exactly is proven?",
+      "That the winner is the lowest valid revealed price under rules locked before bidding, that every reveal matches a commitment posted inside the window, and that the money moved only on delivery confirmation, a signed public override, a dispute resolution, or a refund. What is never claimed: that no lower bid existed among sellers who stayed silent. Silence cannot win, which is why the lowest bidder reveals.",
     ],
     [
-      "what if the circle wants a different winner?",
-      "it can, in the open. an override names another revealed bid, publishes the full reason, whose hash sits in the tender record, and collects approver signatures at the circle's threshold. below that bar, no override stands and the computed award is the one that settles.",
+      "What if the circle wants a different winner?",
+      "It can, in the open. An override names another revealed bid, publishes the full reason, whose hash sits in the tender record, and collects approver signatures at the circle's threshold. Below that bar, no override stands and the computed award is the one that settles.",
     ],
     [
-      "what does a seller risk?",
-      "a bond, posted with the bid. reveal, win or lose, and it returns in full. stay silent while the tender awards and the bond is split, half to the circle, half locked forever. if the tender instead expires with no award, an unrevealed bond comes back whole. the seller also keeps the salt private: lose it and the bid can never be revealed.",
+      "What does a seller risk?",
+      "A bond, posted with the bid. Reveal, win or lose, and it returns in full. Stay silent while the tender awards and the bond is split, half to the circle, half locked forever. If the tender instead expires with no award, an unrevealed bond comes back whole. The seller also keeps the salt private: lose it and the bid can never be revealed.",
     ],
     [
-      "do i need a wallet to check a tender?",
-      "no. every tender record is public and the verifier runs in the browser against the public indexer. a wallet, sapient by default, is needed only to act: bid, reveal, approve, confirm.",
+      "Do I need a wallet to check a tender?",
+      "No. Every tender record is public and the verifier runs in the browser against the public indexer. A wallet, Sapient by default, is needed only to act: bid, reveal, approve, confirm.",
     ],
     [
-      "what does asiri charge?",
-      `nothing. there is no platform fee, no asiri treasury, and no operator account in the template. each caller pays the network fee for their own transaction, shown by their wallet before they approve it. the ledger on the results page recomputes what the operator took across all ${LEDGER.rows.length} evidence tenders: zero.`,
+      "What does Asiri charge?",
+      `Nothing. There is no platform fee, no Asiri treasury, and no operator account in the template. Each caller pays the network fee for their own transaction, shown by their wallet before they approve it. The ledger on the results page recomputes what the operator took across all ${LEDGER.rows.length} evidence tenders: zero.`,
     ],
   ];
   for (const [q, a] of qa) {
@@ -560,7 +560,7 @@ export async function renderLanding(
     el(
       "p",
       undefined,
-      `taken by the operator across all ${LEDGER.rows.length} evidence tenders. the ledger is recomputed from every recorded outflow destination, and it closes to the microtari.`,
+      `Taken by the operator across all ${LEDGER.rows.length} evidence tenders. The ledger is recomputed from every recorded outflow destination, and it closes to the microtari.`,
     ),
   );
   const mwrap = el("div");
@@ -568,13 +568,13 @@ export async function renderLanding(
     el(
       "p",
       "mline",
-      "do not take our word for it. every tender carries its whole record on chain, and two independent verifiers recompute the money from that record.",
+      "Do not take our word for it. Every tender carries its whole record on chain, and two independent verifiers recompute the money from that record.",
     ),
   );
   const mcta = el("div", "cta");
-  const receipts = el("button", "btn", "see the receipts");
+  const receipts = el("button", "btn", "See the receipts");
   receipts.addEventListener("click", () => go("#/app/results"));
-  const runIt = el("button", "btn btn-white", "run the verifier");
+  const runIt = el("button", "btn btn-white", "Run the verifier");
   runIt.addEventListener("click", () => go("#/app/verify"));
   mcta.append(receipts, runIt);
   mwrap.append(mcta);
@@ -591,19 +591,19 @@ export async function renderLanding(
   const footBrand = el("div", "foot-brand");
   footBrand.append(
     el("span", "disc disc-light", "a"),
-    el("span", "wordmark", "asiri"),
+    el("span", "wordmark", "Asiri"),
   );
   brand.append(
     footBrand,
     el(
       "p",
       "foot-intro",
-      "asiri means a secret that stays kept. sealed tenders for buying circles, on tari ootle, where the rules lock before bidding and prices nobody reveals never open.",
+      "Asiri means a secret that stays kept. Sealed tenders for buying circles, on Tari Ootle, where the rules lock before bidding and prices nobody reveals never open.",
     ),
     el(
       "p",
       "foot-note",
-      `you are viewing the ${app.indexer.cfg.label}. reads come from the public indexer, writes go through your own wallet. the app holds no keys and keeps no server.`,
+      `You are viewing the ${app.indexer.cfg.label}. Reads come from the public indexer, writes go through your own wallet. The app holds no keys and keeps no server.`,
     ),
   );
   footGrid.append(brand);
@@ -650,11 +650,11 @@ export async function renderLanding(
   footIn.append(footGrid);
   const credits = el("div", "foot-credits");
   credits.append(
-    el("span", undefined, "asiri, a sealed tender protocol."),
+    el("span", undefined, "Asiri, a sealed tender protocol."),
     el(
       "span",
       "foot-credits-right",
-      "every figure on this page is read from the chain or recomputed from its record.",
+      "Every figure on this page is read from the chain or recomputed from its record.",
     ),
   );
   footIn.append(credits);
@@ -688,7 +688,7 @@ export async function renderLanding(
               const row = el("button", "frow");
               const av = el("span", "av", circle.name.slice(0, 2).toLowerCase());
               const name = el("span", undefined, t.circleName || "sealed tender");
-              const pill = el("span", "pill pill-tint", t.state.toLowerCase());
+              const pill = el("span", "pill pill-tint", t.state);
               const meta = el("span", "tm");
               meta.append(
                 el("b", undefined, money(t.rules.budgetCap)),
@@ -714,8 +714,8 @@ export async function renderLanding(
           "div",
           "empty",
           app.network === "mainnet"
-            ? "no tenders to show on mainnet yet. switch to the esmeralda testnet inside the app to watch the trial tenders run."
-            : "no tenders to show yet. the featured circle's tenders will appear here as they are created.",
+            ? "No tenders to show on Mainnet yet. Switch to the Esmeralda testnet inside the app to watch the trial tenders run."
+            : "No tenders to show yet. The featured circle's tenders will appear here as they are created.",
         ),
       );
     }

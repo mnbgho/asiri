@@ -96,12 +96,12 @@ export class App {
     const net = await this.wallet.refreshNetwork();
     if (net === null) {
       throw new Error(
-        "your wallet's network could not be checked, so nothing was submitted. reconnect your wallet and try again.",
+        "Your wallet's network could not be checked, so nothing was submitted. Reconnect your wallet and try again.",
       );
     }
     if (networkMatch(net, this.network) === "mismatch") {
       throw new Error(
-        `your wallet is on ${net}, but the app is set to ${NETWORKS[this.network].label}. switch the network in your wallet, or switch the app's network, then try again.`,
+        `Your wallet is on ${net}, but the app is set to ${NETWORKS[this.network].label}. Switch the network in your wallet, or switch the app's network, then try again.`,
       );
     }
   }
@@ -255,7 +255,7 @@ export function tari(ut: bigint): string {
 /** Parse a TARI amount typed by the user into µT. */
 export function parseTari(s: string): bigint {
   const m = s.trim().match(/^(\d+)(?:\.(\d{1,6}))?$/);
-  if (!m) throw new Error("enter an amount like 5 or 0.25");
+  if (!m) throw new Error("Enter an amount like 5 or 0.25");
   return BigInt(m[1]) * 1_000_000n + BigInt((m[2] ?? "").padEnd(6, "0") || "0");
 }
 

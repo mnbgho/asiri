@@ -22,7 +22,7 @@ import {
   type CircleComponentState,
 } from "../state";
 import { deadlineSpan } from "../time";
-import { actionButton, box, money, notice, BUILDER_RUN_LABEL } from "./common";
+import { actionButton, box, money, notice, FEATURED_TENDERS_NOTE } from "./common";
 
 interface TenderMark {
   source: string;
@@ -37,14 +37,14 @@ export async function renderOverview(
   const wrap = el("div");
   root.append(wrap);
 
-  const openBox = box("open a tender or circle by address");
+  const openBox = box("Open a tender or circle by address");
   const input = el("input");
   input.type = "text";
   input.placeholder = "component_…";
   input.className = "mono addr";
   // The box heading names this field's purpose; the input
   // itself carries it as its accessible name.
-  setAria(input, "aria-label", "tender or circle component address");
+  setAria(input, "aria-label", "Tender or circle component address");
   const row = el("div", "srow");
   const openBtn = el("button", "btn btn-blue btn-sm", "open");
   openBtn.addEventListener("click", () => {
@@ -58,7 +58,7 @@ export async function renderOverview(
       let firstError: unknown = null;
       try {
         const sub = await app.indexer.substate(addr);
-        if (!sub) throw new Error("that component is down");
+        if (!sub) throw new Error("That component is down");
         const t = decodeTenderState(sub.value);
         app.watch("tenders", addr);
         go(`#/app/tender/${addr}`);
@@ -69,7 +69,7 @@ export async function renderOverview(
       }
       try {
         const sub = await app.indexer.substate(addr);
-        if (!sub) throw new Error("that component is down");
+        if (!sub) throw new Error("That component is down");
         decodeCircleState(sub.value);
         app.watch("circles", addr);
         go(`#/app/circle/${addr}`);
@@ -83,7 +83,7 @@ export async function renderOverview(
   wrap.append(openBox.box);
 
   const listBox = box("tenders", app.indexer.cfg.label);
-  listBox.body.append(el("div", "empty", "reading the network…"));
+  listBox.body.append(el("div", "empty", "Reading the network…"));
   wrap.append(listBox.box);
 
   const discoveryBox = box("discovery", app.indexer.cfg.label);
@@ -139,7 +139,7 @@ export async function renderOverview(
     if (discovered)
       for (const t of discovered.tenders)
         if (!tenders.has(t))
-          tenders.set(t, { source: "discovered on the network", discovered: true });
+          tenders.set(t, { source: "Discovered on the network", discovered: true });
     listBox.body.replaceChildren();
     if (tenders.size === 0) {
       listBox.body.append(
@@ -147,8 +147,8 @@ export async function renderOverview(
           "div",
           "empty",
           app.network === "mainnet"
-            ? "no public tenders are listed on mainnet yet. switch to the esmeralda testnet to see the live trial, or open a tender by address above."
-            : "no tenders found yet on this network. open one by address above, or create the first circle from start a circle or tender.",
+            ? "No public tenders are listed on Mainnet yet. Switch to the Esmeralda testnet to see the live trial, or open a tender by address above."
+            : "No tenders found yet on this network. Open one by address above, or create the first circle from 'Start a circle or tender'.",
         ),
       );
       return circleStates;
@@ -166,7 +166,7 @@ export async function renderOverview(
         const t = decodeTenderState(sub.value);
         const rowBtn = el("button", "trow");
         const name = el("span", undefined, t.circleName || "sealed tender");
-        const pill = el("span", "pill pill-tint", t.state.toLowerCase());
+        const pill = el("span", "pill pill-tint", t.state);
         const meta = el("span", "tm");
         const capLine = el("b", undefined, money(t.rules.budgetCap));
         // The row title is already the circle's name, so the
@@ -175,12 +175,12 @@ export async function renderOverview(
         // information: watched, or discovered on the network.
         const parts: string[] = [];
         if (mark.source !== t.circleName) parts.push(mark.source);
-        if (mark.discovered && mark.source !== "discovered on the network")
-          parts.push("discovered on the network");
+        if (mark.discovered && mark.source !== "Discovered on the network")
+          parts.push("Discovered on the network");
         parts.push(`${t.commitments.length} bids in`);
         meta.append(capLine, document.createTextNode(parts.join(" · ")));
         if (t.bidDeadline) {
-          meta.append(document.createTextNode(" · bids close "));
+          meta.append(document.createTextNode(" · Bids close "));
           meta.append(deadlineSpan(app.network, t.bidDeadline, epoch));
         }
         rowBtn.append(name, pill, meta);
@@ -193,14 +193,13 @@ export async function renderOverview(
     }
     if (!listBox.body.children.length) {
       listBox.body.append(
-        el("div", "empty", "the listed tenders could not be read right now."),
+        el("div", "empty", "The listed tenders could not be read right now."),
       );
     } else if (featuredListed) {
       // The featured circle's tenders carry their provenance
-      // where they are listed, in the receipts' own words, not
-      // only inside the receipt downloads.
+      // where they are listed, not only inside the receipt downloads.
       listBox.body.append(
-        el("div", "small mt", `tenders from the featured circle are ${BUILDER_RUN_LABEL}.`),
+        el("div", "small mt", `Tenders from the featured circle are ${FEATURED_TENDERS_NOTE}.`),
       );
     }
     return circleStates;
@@ -214,7 +213,7 @@ export async function renderOverview(
   if (!templatesConfigured(app.indexer.cfg)) {
     discoveryBox.body.append(
       notice(
-        `there is nothing to discover on ${app.indexer.cfg.label} yet: the asiri templates are not published there, so no circles or tenders run them. switch to the esmeralda testnet to see discovery over its live network.`,
+        `There is nothing to discover on ${app.indexer.cfg.label} yet: the Asiri templates are not published there, so no circles or tenders run them. Switch to the Esmeralda testnet to see discovery over its live network.`,
       ),
     );
     await renderList(null);
@@ -222,7 +221,7 @@ export async function renderOverview(
   }
   discoveryBox.body.append(
     notice(
-      "discovery reads this network's public event record for the asiri templates and confirms every candidate against the chain, so it can find circles and tenders this browser has never opened. it finds every component that has emitted an event, and creating a circle or a tender emits one. a full read replays the templates' whole history, so it can take a while on a large network, and reads run one at a time.",
+      "Discovery reads this network's public event record for the Asiri templates and confirms every candidate against the chain, so it can find circles and tenders this browser has never opened. It finds every component that has emitted an event, and creating a circle or a tender emits one. A full read replays the templates' whole history, so it can take a while on a large network, and reads run one at a time.",
     ),
   );
   const discoveryStatus = el("div", "small mt", "");
@@ -236,18 +235,18 @@ export async function renderOverview(
     circleStates: Map<string, CircleComponentState>,
   ): void => {
     discoveryStatus.textContent =
-      `discovery found ${set.circles.length} ${set.circles.length === 1 ? "circle" : "circles"} ` +
+      `Discovery found ${set.circles.length} ${set.circles.length === 1 ? "circle" : "circles"} ` +
       `and ${set.tenders.length} ${set.tenders.length === 1 ? "tender" : "tenders"} on this network, ` +
-      `read ${discoveryAgeText(set.at)}. the tenders are in the list above, marked as discovered.`;
+      `read ${discoveryAgeText(set.at)}. The tenders are in the list above, marked as discovered.`;
     discoveredCircles.replaceChildren();
     for (const c of set.circles) {
       const state = circleStates.get(c);
       const rowEl = el("div", "commit-row");
       rowEl.append(
-        el("span", undefined, `${state?.name || short(c)} · discovered on the network`),
+        el("span", undefined, `${state?.name || short(c)} · Discovered on the network`),
       );
       rowEl.append(el("span", "spacer"));
-      const open = el("button", "btn btn-blue btn-sm", "open circle");
+      const open = el("button", "btn btn-blue btn-sm", "Open circle");
       open.addEventListener("click", () => go(`#/app/circle/${c}`));
       rowEl.append(open);
       discoveredCircles.append(rowEl);
@@ -257,11 +256,11 @@ export async function renderOverview(
   const runDiscovery = async (): Promise<void> => {
     if (running) return;
     running = true;
-    discoveryStatus.textContent = "reading the network's event record…";
+    discoveryStatus.textContent = "Reading the network's event record…";
     try {
       const set = await discoverNetwork(app.indexer, {
         onEvent: (n) => {
-          discoveryStatus.textContent = `reading the network's event record… ${n} events read so far.`;
+          discoveryStatus.textContent = `Reading the network's event record… ${n} events read so far.`;
         },
       });
       writeDiscoveryCache(app.network, set);
@@ -270,15 +269,15 @@ export async function renderOverview(
       showSet(set, states);
     } catch {
       discoveryStatus.textContent = shown
-        ? `discovery could not read the network this time. the list above still shows the last good read, from ${discoveryAgeText(shown.at)}, and what this browser has watched.`
-        : "discovery could not read the network this time. the list above shows the featured circle and what this browser has watched, and nothing was changed.";
+        ? `Discovery could not read the network this time. The list above still shows the last good read, from ${discoveryAgeText(shown.at)}, and what this browser has watched.`
+        : "Discovery could not read the network this time. The list above shows the featured circle and what this browser has watched, and nothing was changed.";
     } finally {
       running = false;
     }
   };
 
   const refreshBtn = actionButton(
-    "read the network again",
+    "Read the network again",
     "btn-white btn-sm",
     () => runDiscovery(),
     (e) => errorBox(wrap, e),

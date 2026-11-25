@@ -104,13 +104,13 @@ function startDeadlineTimer(): void {
 // address, not from the sidebar, so they carry a title and a
 // purpose line but no nav entry of their own.
 const TITLES: Record<string, string> = {
-  overview: "circles and tenders",
+  overview: "Circles and tenders",
   tender: "tender record",
   circle: "circle record",
-  create: "start a circle or tender",
+  create: "Start a circle or tender",
   seller: "bid and reveal",
   approvals: "approvals",
-  verify: "verify a tender",
+  verify: "Verify a tender",
   results: "results",
   help: "help",
 };
@@ -125,37 +125,37 @@ const NAV: { key: string; label: string; helper: string }[] = [
   {
     key: "overview",
     label: "Circles and tenders",
-    helper: "every circle and tender this browser can see, with its live state",
+    helper: "Every circle and tender this browser can see, with its live state",
   },
   {
     key: "create",
     label: "Start a circle or tender",
-    helper: "form the buying group, then lock its tender's rules and budget",
+    helper: "Form the buying group, then lock its tender's rules and budget",
   },
   {
     key: "seller",
     label: "Bid and reveal",
-    helper: "sellers: commit a sealed bid, then open it in the reveal window",
+    helper: "Sellers: commit a sealed bid, then open it in the reveal window",
   },
   {
     key: "approvals",
     label: "Approvals",
-    helper: "what is waiting for your signature: overrides, deliveries, disputes",
+    helper: "What is waiting for your signature: overrides, deliveries, disputes",
   },
   {
     key: "results",
     label: "Results",
-    helper: "the proof: finished tenders, checked by two verifiers, with receipts",
+    helper: "The proof: finished tenders, checked by two verifiers, with receipts",
   },
   {
     key: "verify",
     label: "Verify a tender",
-    helper: "re-run the checks on any tender yourself, live, no wallet needed",
+    helper: "Re-run the checks on any tender yourself, live, no wallet needed",
   },
   {
     key: "help",
     label: "Help",
-    helper: "the questions every new circle asks, answered plainly",
+    helper: "The questions every new circle asks, answered plainly",
   },
 ];
 
@@ -163,22 +163,22 @@ const NAV: { key: string; label: string; helper: string }[] = [
 // screen is for, so no screen needs guessing at.
 const PURPOSES: Record<string, string> = {
   overview:
-    "every circle and tender this browser can see, each with its live state. open a tender to read its whole record and act on it.",
+    "Every circle and tender this browser can see, each with its live state. Open a tender to read its whole record and act on it.",
   tender:
     "one tender's whole record: its locked rules, its money, every bid and reveal, and the actions its state allows.",
   circle:
     "one buying circle: its approvers, its treasury, its tenders, and what the circle can do.",
   create:
-    "form a buying circle first, then create a tender for it. the rules and the budget lock before bidding opens, and the budget is escrowed in the same step.",
+    "Form a buying circle first, then create a tender for it. The rules and the budget lock before bidding opens, and the budget is escrowed in the same step.",
   seller:
     "commit a sealed bid with its bond while bidding is open, then come back in the reveal window and open it. only opened bids can win, and a bid nobody opens stays sealed.",
   approvals:
-    "everything waiting for your signature: override proposals, deliveries to confirm, disputes to settle, and what needs you as a seller or a winner.",
+    "Everything waiting for your signature: override proposals, deliveries to confirm, disputes to settle, and what needs you as a seller or a winner.",
   verify:
-    "check any tender yourself. the verifier recomputes every check from the public record, in your browser. no wallet needed.",
+    "Check any tender yourself. The verifier recomputes every check from the public record, in your browser. No wallet needed.",
   results:
-    "the proof: the finished season tenders, each checked by two verifiers, with its receipt, the money ledger, and the attacks the chain refused.",
-  help: "the questions a new circle asks in its first months, answered from how the product actually behaves.",
+    "The proof: the finished season tenders, each checked by two verifiers, with its receipt, the money ledger, and the attacks the chain refused.",
+  help: "The questions a new circle asks in its first months, answered from how the product actually behaves.",
 };
 
 async function route(): Promise<void> {
@@ -199,7 +199,7 @@ async function route(): Promise<void> {
 
   const frame = el("div", "app");
   const side = el("aside", "side");
-  const logo = el("a", "logo", "asiri");
+  const logo = el("a", "logo", "Asiri");
   logo.append(el("span", "dot", "."));
   logo.href = "#/";
   side.append(logo);
@@ -214,7 +214,7 @@ async function route(): Promise<void> {
   const sideLogo = el("a", "lp-logo", "ASIRI");
   sideLogo.href = "#/";
   const sideBurger = el("button", "burger");
-  setAria(sideBurger, "aria-label", "open the menu");
+  setAria(sideBurger, "aria-label", "Open the menu");
   setAria(sideBurger, "aria-expanded", "false");
   sideBurger.append(el("span"), el("span"), el("span"));
   sideTop.append(sideLogo, sideBurger);
@@ -232,7 +232,7 @@ async function route(): Promise<void> {
     if (!open && has)
       side.className = parts.filter((c) => c !== "menu-open").join(" ");
     setAria(sideBurger, "aria-expanded", open ? "true" : "false");
-    setAria(sideBurger, "aria-label", open ? "close the menu" : "open the menu");
+    setAria(sideBurger, "aria-label", open ? "Close the menu" : "Open the menu");
   };
   sideBurger.addEventListener("click", () => {
     setSideMenuOpen(!side.className.split(/\s+/).includes("menu-open"));
@@ -317,7 +317,7 @@ async function route(): Promise<void> {
           el(
             "div",
             "wn-warn",
-            `your wallet is on ${app.wallet.network}. actions are blocked until the two match. switch the network in your wallet, or switch the app's network.`,
+            `Your wallet is on ${app.wallet.network}. Actions are blocked until the two match. Switch the network in your wallet, or switch the app's network.`,
           ),
         );
       }
@@ -342,12 +342,12 @@ async function route(): Promise<void> {
       walletCard.append(accountField);
       if (app.myKey) {
         const keyField = el("div", "wn-field");
-        keyField.append(el("div", "wn-label", "your public key"));
+        keyField.append(el("div", "wn-label", "Your public key"));
         const keyRow = el("div", "wn-value-row");
         const keyValue = el("span", "wn-value", short(app.myKey));
         setAria(keyValue, "title", app.myKey);
         const copyBtn = el("button", "wn-copy", "Copy");
-        setAria(copyBtn, "aria-label", "copy my public key");
+        setAria(copyBtn, "aria-label", "Copy my public key");
         copyBtn.addEventListener("click", () => {
           void (async () => {
             try {
@@ -363,7 +363,7 @@ async function route(): Promise<void> {
         keyRow.append(keyValue, copyBtn);
         keyField.append(keyRow);
         keyField.append(
-          el("div", "wn-note", "share this key with your circle to join or get paid."),
+          el("div", "wn-note", "Share this key with your circle to join or get paid."),
         );
         walletCard.append(keyField);
       }
@@ -384,7 +384,7 @@ async function route(): Promise<void> {
       connectBtn.addEventListener("click", () => {
         void (async () => {
           if (!(await waitForProvider())) {
-            connectBtn.textContent = "no wallet found. install sapient or open the tari web wallet.";
+            connectBtn.textContent = "No wallet found. Install Sapient or open the Tari web wallet.";
             return;
           }
           try {
@@ -393,8 +393,8 @@ async function route(): Promise<void> {
             // A refusal in the wallet is the user's own call,
             // not a failure: say which one happened.
             connectBtn.textContent = looksDeclined(e)
-              ? "you declined the connection in your wallet. approve it there to connect."
-              : "the wallet did not connect. try again.";
+              ? "You declined the connection in your wallet. Approve it there to connect."
+              : "The wallet did not connect. Try again.";
             return;
           }
           // The account is connected from here. Aligning the
@@ -415,7 +415,7 @@ async function route(): Promise<void> {
       });
       walletCard.append(connectBtn);
       if (!hasProvider()) {
-        const hint = el("div", "small mt", "writes need a wallet. reading and verifying never do.");
+        const hint = el("div", "small mt", "Writes need a wallet. Reading and verifying never do.");
         walletCard.append(hint);
       }
     }
@@ -432,10 +432,10 @@ async function route(): Promise<void> {
   // heading order never skips a level. (It rendered as an h2
   // with h3 boxes until the accessibility pass: same styles,
   // the stylesheet names both levels.)
-  head.append(el("h1", undefined, cap(TITLES[screen] ?? "circles and tenders")));
+  head.append(el("h1", undefined, cap(TITLES[screen] ?? "Circles and tenders")));
   head.append(el("span", "pill pill-tint", networkPill(app.indexer.cfg)));
   head.append(el("span", "spacer"));
-  const newBtn = el("button", "btn btn-blue btn-sm", "new tender");
+  const newBtn = el("button", "btn btn-blue btn-sm", "New tender");
   newBtn.addEventListener("click", () => go("#/app/create"));
   head.append(newBtn);
   main.append(head);
@@ -473,11 +473,11 @@ async function route(): Promise<void> {
         break;
       case "tender":
         if (param) await renderTender(app, content, decodeURIComponent(param), go);
-        else content.append(el("div", "empty", "open a tender from circles and tenders."));
+        else content.append(el("div", "empty", "Open a tender from circles and tenders."));
         break;
       case "circle":
         if (param) await renderCircle(app, content, decodeURIComponent(param), go);
-        else content.append(el("div", "empty", "open a circle from circles and tenders."));
+        else content.append(el("div", "empty", "Open a circle from circles and tenders."));
         break;
       case "create":
         await renderCreate(app, content, go);

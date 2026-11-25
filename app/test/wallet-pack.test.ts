@@ -242,7 +242,7 @@ describe("the submit-time network guard", () => {
       app.submitAction([
         { CallFunction: { address: "template_x", function: "new", args: [] } },
       ]),
-    ).rejects.toThrow(/your wallet is on mainnet, but the app is set to esmeralda testnet/);
+    ).rejects.toThrow(/Your wallet is on mainnet, but the app is set to Esmeralda testnet/);
     expect(mock.calls).not.toContain("tari_createTransactionRequest");
   });
 
@@ -265,7 +265,7 @@ describe("the submit-time network guard", () => {
       app.submitAction([
         { CallFunction: { address: "template_x", function: "new", args: [] } },
       ]),
-    ).rejects.toThrow(/your wallet's network could not be checked/);
+    ).rejects.toThrow(/Your wallet's network could not be checked/);
     expect(mock.calls).not.toContain("tari_createTransactionRequest");
   });
 
@@ -389,14 +389,14 @@ describe("fee figures", () => {
   it("labels the figure typical and points at the wallet for the exact cost", () => {
     for (const action of Object.keys(MEASURED) as FeeAction[]) {
       const text = feeText(action);
-      expect(text).toContain(`typical fee about ${tari(TYPICAL_FEES[action])} tari`);
-      expect(text).toContain("the wallet shows the exact cost before you approve");
+      expect(text).toContain(`Typical fee about ${tari(TYPICAL_FEES[action])} tari`);
+      expect(text).toContain("The wallet shows the exact cost before you approve");
     }
   });
 
   it("renders as a note element carrying the figure", () => {
     const note = feeNote("claimReceipt") as unknown as FakeEl;
-    expect(note.textContent).toContain("typical fee about 0.0085 tari");
+    expect(note.textContent).toContain("Typical fee about 0.0085 tari");
   });
 });
 
@@ -412,7 +412,7 @@ describe("funding guidance", () => {
     const text = fundingGuidance("mainnet");
     expect(text).toContain("burning xtm");
     expect(text).toContain("one for one");
-    expect(text).toContain("there is no faucet and no other source");
+    expect(text).toContain("There is no faucet and no other source");
   });
 
   it("applies to a zero balance only", () => {
@@ -426,7 +426,7 @@ describe("funding guidance", () => {
     const app = new App();
     const root = new FakeEl("div");
     await renderCreate(app, root as unknown as HTMLElement, () => {});
-    expect(root.textContent).toContain("costs, in plain words");
+    expect(root.textContent).toContain("Costs, in plain words");
     expect(root.textContent).toContain(fundingGuidance("esmeralda"));
   });
 });

@@ -33,7 +33,7 @@ const HEX64 = /^[0-9a-f]{64}$/i;
 function validateBid(raw: unknown): BidBackupRecord {
   const bad = () =>
     new Error(
-      "one of the bids in that file is incomplete or damaged, so nothing was imported.",
+      "One of the bids in that file is incomplete or damaged, so nothing was imported.",
     );
   if (typeof raw !== "object" || raw === null) throw bad();
   const r = raw as Record<string, unknown>;
@@ -63,7 +63,7 @@ export function parseBidsFile(text: string): BidBackupRecord[] {
   try {
     doc = JSON.parse(text);
   } catch {
-    throw new Error("that file is not an asiri bids backup.");
+    throw new Error("That file is not an Asiri bids backup.");
   }
   if (
     typeof doc !== "object" ||
@@ -71,7 +71,7 @@ export function parseBidsFile(text: string): BidBackupRecord[] {
     (doc as { format?: unknown }).format !== PLAIN_FORMAT ||
     !Array.isArray((doc as { bids?: unknown }).bids)
   ) {
-    throw new Error("that file is not an asiri bids backup.");
+    throw new Error("That file is not an Asiri bids backup.");
   }
   return (doc as { bids: unknown[] }).bids.map(validateBid);
 }
@@ -127,7 +127,7 @@ export async function encryptBids(
   bids: readonly BidBackupRecord[],
   passphrase: string,
 ): Promise<string> {
-  if (!passphrase) throw new Error("choose a passphrase first.");
+  if (!passphrase) throw new Error("Choose a passphrase first.");
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(passphrase, salt, PBKDF2_ITERATIONS);
@@ -173,10 +173,10 @@ export async function decryptBidsFile(
 ): Promise<BidBackupRecord[]> {
   const fail = () =>
     new Error(
-      "that file could not be opened. the passphrase may be wrong, or the file is damaged or is not an asiri backup.",
+      "That file could not be opened. The passphrase may be wrong, or the file is damaged or is not an Asiri backup.",
     );
   if (!passphrase)
-    throw new Error("enter the backup's passphrase and try again.");
+    throw new Error("Enter the backup's passphrase and try again.");
   let doc: {
     kdf?: { name?: unknown; hash?: unknown; iterations?: unknown; salt?: unknown };
     cipher?: { name?: unknown; iv?: unknown };

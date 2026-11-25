@@ -54,7 +54,7 @@ export interface LedgerRow {
 export const LEDGER = {
   "rows": [
     {
-      "title": "the first tender",
+      "title": "The first tender",
       "tender": "component_3dbc5322267ca40712de3876c651938bf51730c0e4f29487c39c9e2dcdb36850",
       "state": "Settled",
       "escrowIn": 20000000,
@@ -68,7 +68,7 @@ export const LEDGER = {
       "operatorPaid": 0
     },
     {
-      "title": "the tie tender",
+      "title": "The tie tender",
       "tender": "component_23f8e02e400ad07858c4435c52685a4143d2711deb356548df2968ae7916a7c4",
       "state": "Settled",
       "escrowIn": 20000000,
@@ -82,7 +82,7 @@ export const LEDGER = {
       "operatorPaid": 0
     },
     {
-      "title": "the override tender",
+      "title": "The override tender",
       "tender": "component_49377a6f26dfb108ca406bbe445551832512aef96c017499c6f2fda5f4970aab",
       "state": "Settled",
       "escrowIn": 20000000,
@@ -96,7 +96,7 @@ export const LEDGER = {
       "operatorPaid": 0
     },
     {
-      "title": "the dispute tender",
+      "title": "The dispute tender",
       "tender": "component_2c11937080ed3f26892e378e2b4ad5457ae786ce2ebf187c1c7953020ea8f49f",
       "state": "Settled",
       "escrowIn": 20000000,
@@ -110,7 +110,7 @@ export const LEDGER = {
       "operatorPaid": 0
     },
     {
-      "title": "the expiry tender",
+      "title": "The expiry tender",
       "tender": "component_8997a6b77d91deb9e9d6703fd3e3cc173ab4eec5ba2dedd0b22cf53b3312789a",
       "state": "Expired",
       "escrowIn": 20000000,
@@ -124,7 +124,7 @@ export const LEDGER = {
       "operatorPaid": 0
     },
     {
-      "title": "the browser wallet tender",
+      "title": "The browser wallet tender",
       "tender": "component_be42cefe86871834d94c7330fd105d198edd7c438b09033ad1aca19b84f2d4a2",
       "state": "Settled",
       "escrowIn": 2000000,
@@ -138,7 +138,7 @@ export const LEDGER = {
       "operatorPaid": 0
     },
     {
-      "title": "the scale tender",
+      "title": "The scale tender",
       "tender": "component_d4542df584b5e5682d36c28f39b17c97994eaf4544623b91e7d8fe5b928a8fcc",
       "state": "Settled",
       "escrowIn": 20000000,

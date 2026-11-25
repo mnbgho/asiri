@@ -171,9 +171,9 @@ describe("evidence controls under a pick race", () => {
     ];
     input.fire("change");
     await settle();
-    expect(result.textContent).toBe("this document matches the hash on chain.");
+    expect(result.textContent).toBe("This document matches the hash on chain.");
     resolveA(bufOf("the first document"));
     await settle();
-    expect(result.textContent).toBe("this document matches the hash on chain.");
+    expect(result.textContent).toBe("This document matches the hash on chain.");
   });
 });

@@ -50,9 +50,9 @@ describe("plain backup", () => {
   });
 
   it("refuses a file that is not a backup", () => {
-    expect(() => parseBidsFile("not json")).toThrow(/not an asiri bids backup/);
+    expect(() => parseBidsFile("not json")).toThrow(/not an Asiri bids backup/);
     expect(() => parseBidsFile(JSON.stringify({ format: "other" }))).toThrow(
-      /not an asiri bids backup/,
+      /not an Asiri bids backup/,
     );
   });
 
@@ -126,7 +126,7 @@ describe("encrypted backup", () => {
 
   it("needs a passphrase to encrypt at all", async () => {
     await expect(encryptBids([BID], "")).rejects.toThrow(
-      /choose a passphrase first/,
+      /Choose a passphrase first/,
     );
   });
 });

@@ -320,7 +320,7 @@ describe("confirmAction", () => {
     expect(outcome).toEqual({
       kind: "failed",
       txId: NEW_TX,
-      reason: "the chain accepted the fee but the execution failed",
+      reason: "The chain accepted the fee but the execution failed",
     });
   });
 

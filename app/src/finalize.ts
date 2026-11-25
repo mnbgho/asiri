@@ -221,8 +221,8 @@ export async function confirmAction(
           parsed.abortDetails && parsed.abortDetails.trim()
             ? plainReason(parsed.abortDetails)
             : parsed.decision === "Commit"
-              ? "the chain accepted the fee but the execution failed"
-              : `the chain's final decision was ${parsed.decision.toLowerCase()}`,
+              ? "The chain accepted the fee but the execution failed"
+              : `The chain's final decision was ${parsed.decision.toLowerCase()}`,
       };
     }
   }

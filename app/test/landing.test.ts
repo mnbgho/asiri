@@ -113,11 +113,11 @@ describe("landing at full Section 15A scope", () => {
     const r = await render();
     const verpill = r.querySelectorAll(".verpill");
     expect(verpill).toHaveLength(1);
-    expect(verpill[0].textContent).toContain("mainnet");
+    expect(verpill[0].textContent).toContain("Mainnet");
     const signin = r.querySelectorAll(".signin");
     expect(signin).toHaveLength(1);
-    expect(signin[0].textContent).toContain("open the app");
-    expect(signin[0].textContent).toContain("asiri");
+    expect(signin[0].textContent).toContain("Open the app");
+    expect(signin[0].textContent).toContain("Asiri");
     const text = r.textContent;
     for (const link of ["Tenders", "How it works", "Questions", "The proof"]) {
       expect(text).toContain(link);
@@ -128,14 +128,14 @@ describe("landing at full Section 15A scope", () => {
     const r = await render();
     const text = r.textContent;
     expect(text).toContain("Everyone says their tender is fair");
-    expect(text).toContain("the proof.");
-    expect(text).toContain("the template awards the lowest valid revealed price");
+    expect(text).toContain("The proof.");
+    expect(text).toContain("The template awards the lowest valid revealed price");
     expect(text).toContain("even the buyer cannot peek");
     for (const chip of [
-      "rules locked",
-      "budget escrowed",
-      "bids sealed as hashes",
-      "opened only by their owners",
+      "Rules locked",
+      "Budget escrowed",
+      "Bids sealed as hashes",
+      "Opened only by their owners",
     ]) {
       expect(text).toContain(chip);
     }
@@ -157,11 +157,11 @@ describe("landing at full Section 15A scope", () => {
     expect(facts.checks).toEqual({ passed, total });
     const text = strips[0].textContent;
     expect(text).toContain(`${records.length}`);
-    expect(text).toContain("tenders run on mainnet");
+    expect(text).toContain("Tenders run on Mainnet");
     expect(text).toContain(`${passed} of ${total}`);
-    expect(text).toContain("checks passed by two verifiers");
+    expect(text).toContain("Checks passed by two verifiers");
     expect(text).toContain(`${MAINNET_ATTACKS.length}`);
-    expect(text).toContain("attacks refused by the chain");
+    expect(text).toContain("Attacks refused by the chain");
     const links = strips[0].querySelectorAll(".ps-link");
     expect(links).toHaveLength(1);
     expect((links[0] as unknown as { href: string }).href).toBe(
@@ -175,10 +175,10 @@ describe("landing at full Section 15A scope", () => {
     expect(letters).toEqual(["A", "S", "I", "R", "I"]);
     const text = r.textContent;
     for (const head of [
-      "award by template",
+      "Award by template",
       "sealed bids",
       "immutable rules",
-      "reveal to win",
+      "Reveal to win",
       "inspect everything",
     ]) {
       expect(text).toContain(head);
@@ -227,7 +227,7 @@ describe("landing at full Section 15A scope", () => {
     expect(joined).toContain(MAINNET_ATTACK_OVERRIDE.proposeTx);
     expect(joined).toContain(MAINNET_ATTACK_OVERRIDE.signTx);
     expect(joined).toContain("no award method to call");
-    expect(friend.source).toContain("live on mainnet");
+    expect(friend.source).toContain("Live on Mainnet");
     const money = rigAnswer("money");
     const mJoined = money.rejected.join(" ");
     for (const k of [
@@ -239,12 +239,12 @@ describe("landing at full Section 15A scope", () => {
       expect(mJoined).toContain(byKey.get(k)!.rejection);
       expect(mJoined).toContain(byKey.get(k)!.tx);
     }
-    expect(money.source).toContain("live on mainnet");
+    expect(money.source).toContain("Live on Mainnet");
   });
 
   it("answers the construction attacks, with the live record behind them", () => {
     const peek = rigAnswer("peek");
-    expect(peek.rejected.join(" ")).toContain("there is no method to call");
+    expect(peek.rejected.join(" ")).toContain("There is no method to call");
     expect(peek.rejected.join(" ")).toContain("stayed sealed");
     expect(peek.source).toContain("by construction");
     // Peeking still quotes no transaction: there is no
@@ -257,7 +257,7 @@ describe("landing at full Section 15A scope", () => {
     const upd = MAINNET_ATTACKS.find((a) => a.key === "update-rules")!;
     expect(rules.rejected.join(" ")).toContain(upd.rejection);
     expect(rules.rejected.join(" ")).toContain(upd.tx);
-    expect(rules.source).toContain("refused live on mainnet");
+    expect(rules.source).toContain("refused live on Mainnet");
   });
 
   it("carries a mobile menu: ASIRI logo and a hamburger, with the nav parts inside the menu", async () => {
@@ -273,11 +273,11 @@ describe("landing at full Section 15A scope", () => {
     // mobile dropdown shows the same links and the same open
     // the app action, not a copy of them.
     const menuText = menu[0].textContent;
-    expect(menuText).toContain("mainnet");
+    expect(menuText).toContain("Mainnet");
     for (const link of ["Tenders", "How it works", "Questions", "The proof"]) {
       expect(menuText).toContain(link);
     }
-    expect(menuText).toContain("open the app");
+    expect(menuText).toContain("Open the app");
   });
 
   it("renders the rig console pre-filled with the first attack's answer, with all four attack buttons", async () => {
@@ -286,15 +286,15 @@ describe("landing at full Section 15A scope", () => {
     // The console opens on the peek answer, not empty: the
     // visitor sees what the chain does to a rig attempt
     // without clicking anything.
-    expect(text).toContain("read the price inside a sealed commitment");
-    expect(text).toContain("there is no method to call");
-    expect(text).toContain("the tender is untouched.");
+    expect(text).toContain("Read the price inside a sealed commitment");
+    expect(text).toContain("There is no method to call");
+    expect(text).toContain("The tender is untouched.");
     expect(text).not.toContain("waiting for an attack…");
     for (const label of [
-      "peek at the sealed bids",
-      "change the budget after bids",
-      "award my friend instead",
-      "move the escrow to my wallet",
+      "Peek at the sealed bids",
+      "Change the budget after bids",
+      "Award my friend instead",
+      "Move the escrow to my wallet",
     ]) {
       expect(text).toContain(label);
     }
@@ -314,13 +314,13 @@ describe("landing at full Section 15A scope", () => {
   it("closes with the blue footer: brand, three link columns, credits", async () => {
     const r = await render();
     const text = r.textContent;
-    expect(text).toContain("asiri means a secret that stays kept");
+    expect(text).toContain("Asiri means a secret that stays kept");
     for (const col of ["Product", "Verify", "The app"]) {
       expect(text).toContain(col);
     }
-    expect(text).toContain("asiri, a sealed tender protocol.");
+    expect(text).toContain("Asiri, a sealed tender protocol.");
     expect(text).toContain(
-      "every figure on this page is read from the chain or recomputed from its record",
+      "Every figure on this page is read from the chain or recomputed from its record",
     );
     // No newsletter surface: no mailing list exists, and the
     // footer must not pretend one does.

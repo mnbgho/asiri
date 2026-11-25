@@ -203,26 +203,26 @@ export function buildCircleRecord(input: CircleRecordInput): Record<string, unkn
     (t) => t.verification.status === "could not be checked",
   ).length;
   const notes: string[] = [
-    "every value in this record was read from the public indexer at export time and decoded from the component states. nothing was taken from the circle's or a tender's own claims about itself.",
+    "Every value in this record was read from the public indexer at export time and decoded from the component states. Nothing was taken from the circle's or a tender's own claims about itself.",
   ];
   if (input.treasuryBalance === null)
-    notes.push("the treasury balance could not be read at export time, and is recorded as unreadable rather than as a figure.");
+    notes.push("The treasury balance could not be read at export time, and is recorded as unreadable rather than as a figure.");
   if (unreadable)
     notes.push(
-      `${unreadable} of this circle's tenders could not be read at export time. each is carried below as an unreadable entry with the reason, not dropped.`,
+      `${unreadable} of this circle's tenders could not be read at export time. Each is carried below as an unreadable entry with the reason, not dropped.`,
     );
   if (unchecked)
     notes.push(
-      `${unchecked} of this circle's tenders carry no verification summary, because the checks could not be computed at export time. the reason stands with each tender.`,
+      `${unchecked} of this circle's tenders carry no verification summary, because the checks could not be computed at export time. The reason stands with each tender.`,
     );
   notes.push(
-    "a verification summary counts the same checks the verify screen runs. a check that could not be read is counted as could not be read: it is not a pass and not a failure, and it is never folded into either.",
+    "A verification summary counts the same checks the verify screen runs. A check that could not be read is counted as could not be read: it is not a pass and not a failure, and it is never folded into either.",
   );
   return {
     record_version: "asiri-circle-record-1",
     network: input.networkLabel,
     exported_from:
-      "the asiri app, from live reads of the public indexer. this file is a record of what the chain held at export time, not a claim by the circle.",
+      "The Asiri app, from live reads of the public indexer. This file is a record of what the chain held at export time, not a claim by the circle.",
     circle: {
       address: input.circleAddress,
       name: c.name,

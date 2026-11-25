@@ -38,7 +38,7 @@ describe("plainAddressError", () => {
       COMPONENT,
       new Error(`not found on esmeralda testnet: /substates/${COMPONENT}`),
     );
-    expect(out).toContain("nothing was found at that address on this network");
+    expect(out).toContain("Nothing was found at that address on this network");
   });
 
   it("maps a down component to a not-live message", () => {
@@ -64,7 +64,7 @@ describe("plainAddressError", () => {
       "vault_not-an-address",
       new Error("not found on esmeralda testnet: /substates/vault_not-an-address"),
     );
-    expect(out).toContain("nothing was found at that address on this network");
+    expect(out).toContain("Nothing was found at that address on this network");
     expect(out).not.toContain("belongs to a vault");
   });
 
@@ -155,7 +155,7 @@ describe("checkRevealable", () => {
   it("refuses before submission when the wallet is not connected", async () => {
     const app = fakeApp({ account: null, substate: tenderRoot(2, 20) });
     await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
-      "connect your wallet first",
+      "Connect your wallet first",
     );
   });
 
@@ -202,7 +202,7 @@ describe("checkRevealable", () => {
       epoch: 21,
     });
     await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
-      "the reveal window closed at epoch 20",
+      "The reveal window closed at epoch 20",
     );
   });
 

@@ -132,7 +132,7 @@ describe("info decoders read tari_bor values", () => {
         2n,
         2n,
       ]),
-    ).toThrow("award has 5 fields");
+    ).toThrow("Award has 5 fields");
   });
 
   it("decodes a circle info", () => {

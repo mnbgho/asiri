@@ -16,9 +16,9 @@ import type { NetworkName } from "./indexer";
 
 export function fundingGuidance(network: NetworkName): string {
   if (network === "esmeralda") {
-    return "where testnet tari comes from: the public esmeralda faucet has been unreliable, so pilot circles are funded on request. if you were invited to a pilot circle, reply to the invitation and your wallet will be funded. testnet tari has no value outside this network.";
+    return "Where testnet Tari comes from: the public Esmeralda faucet has been unreliable, so pilot circles are funded on request. If you were invited to a pilot circle, reply to the invitation and your wallet will be funded. Testnet Tari has no value outside this network.";
   }
-  return "where mainnet tari comes from: tari is created only by burning xtm, the tari base layer coin, one for one. the xtm is destroyed on the base layer and the same amount of tari appears on this network. there is no faucet and no other source: you need xtm of your own first, and a base layer wallet to burn it in.";
+  return "Where Mainnet Tari comes from: Tari is created only by burning xtm, the Tari base layer coin, one for one. The xtm is destroyed on the base layer and the same amount of Tari appears on this network. There is no faucet and no other source: you need xtm of your own first, and a base layer wallet to burn it in.";
 }
 
 /** The guidance is for empty wallets; a funded one has no use for it. */

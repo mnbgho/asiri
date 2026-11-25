@@ -15,13 +15,13 @@ describe("thresholdError", () => {
 
   it("rejects the solo circle: no dispute value exists", () => {
     const err = thresholdError(1, 2, 1);
-    expect(err).toContain("no dispute threshold can work here");
-    expect(err).toContain("add an approver to the circle first");
+    expect(err).toContain("No dispute threshold can work here");
+    expect(err).toContain("Add an approver to the circle first");
   });
 
   it("rejects a dispute threshold above the approver count when a valid one exists", () => {
     const err = thresholdError(1, 3, 2);
-    expect(err).toContain("the dispute threshold is 3");
+    expect(err).toContain("The dispute threshold is 3");
     expect(err).toContain("2 approvers");
   });
 
@@ -31,7 +31,7 @@ describe("thresholdError", () => {
   });
 
   it("rejects an approval threshold above the approver count", () => {
-    expect(thresholdError(3, 4, 2)).toContain("the approval threshold is 3");
+    expect(thresholdError(3, 4, 2)).toContain("The approval threshold is 3");
   });
 
   it("rejects non-integer and below-one thresholds", () => {

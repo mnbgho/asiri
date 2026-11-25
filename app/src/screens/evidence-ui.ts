@@ -9,7 +9,7 @@ import { checkEvidence, sha256Hex } from "../evidence";
 
 async function fileBytes(input: HTMLInputElement): Promise<Uint8Array> {
   const file = input.files?.[0];
-  if (!file) throw new Error("choose a document first");
+  if (!file) throw new Error("Choose a document first");
   return new Uint8Array(await file.arrayBuffer());
 }
 
@@ -32,7 +32,7 @@ export function hashFileControl(
   onError: (e: unknown) => void,
 ): HTMLElement {
   const wrap = el("div", "mt");
-  const input = fileInput("choose the document to hash");
+  const input = fileInput("Choose the document to hash");
   // A slow read of an earlier pick must not land after a
   // newer one: each change takes a generation number, and
   // only the latest generation may fill the field or report.
@@ -49,12 +49,12 @@ export function hashFileControl(
     })();
   });
   wrap.append(
-    el("div", "small", "or pick the document and the app fills in its hash:"),
+    el("div", "small", "Or pick the document and the app fills in its hash:"),
     input,
     el(
       "div",
       "hint",
-      "the document is hashed in your browser and never leaves it. only the hash goes on chain.",
+      "The document is hashed in your browser and never leaves it. Only the hash goes on chain.",
     ),
   );
   return wrap;
@@ -66,7 +66,7 @@ export function hashFileControl(
  */
 export function evidenceCheckControl(expectedHash: string): HTMLElement {
   const wrap = el("div", "mt");
-  const input = fileInput("choose a document to check against this hash");
+  const input = fileInput("Choose a document to check against this hash");
   const result = el("div", "small mt");
   // The match answer is a status: announced when it lands.
   setAria(result, "role", "status");
@@ -84,21 +84,21 @@ export function evidenceCheckControl(expectedHash: string): HTMLElement {
         );
         if (mine !== generation) return;
         result.textContent = matches
-          ? "this document matches the hash on chain."
-          : "this document does not match the hash on chain.";
+          ? "This document matches the hash on chain."
+          : "This document does not match the hash on chain.";
       } catch {
         if (mine === generation)
-          result.textContent = "that document could not be read.";
+          result.textContent = "That document could not be read.";
       }
     })();
   });
   wrap.append(
-    el("div", "small", "check a document against this hash:"),
+    el("div", "small", "Check a document against this hash:"),
     input,
     el(
       "div",
       "hint",
-      "the document is hashed in your browser and never leaves it. a match proves the document is byte for byte the one this hash was taken from.",
+      "The document is hashed in your browser and never leaves it. A match proves the document is byte for byte the one this hash was taken from.",
     ),
     result,
   );

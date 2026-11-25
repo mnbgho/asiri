@@ -29,17 +29,17 @@ export function thresholdError(
   approverCount: number,
 ): string | null {
   if (!Number.isInteger(approvalThreshold) || approvalThreshold < 1)
-    return "the approval threshold must be a whole number of at least 1";
+    return "The approval threshold must be a whole number of at least 1";
   if (!Number.isInteger(disputeThreshold) || disputeThreshold < 1)
-    return "the dispute threshold must be a whole number of at least 1";
+    return "The dispute threshold must be a whole number of at least 1";
   if (approvalThreshold > approverCount)
-    return `the approval threshold is ${approvalThreshold}, but this circle has ${approverCount} approver${approverCount === 1 ? "" : "s"}`;
+    return `The approval threshold is ${approvalThreshold}, but this circle has ${approverCount} approver${approverCount === 1 ? "" : "s"}`;
   if (disputeThreshold <= approvalThreshold)
-    return "the dispute threshold must be higher than the approval threshold";
+    return "The dispute threshold must be higher than the approval threshold";
   if (disputeThreshold > approverCount)
     return approvalThreshold >= approverCount
-      ? `no dispute threshold can work here: it must be higher than the approval threshold and no higher than this circle's ${approverCount} approver${approverCount === 1 ? "" : "s"}. add an approver to the circle first`
-      : `the dispute threshold is ${disputeThreshold}, but this circle has ${approverCount} approvers`;
+      ? `No dispute threshold can work here: it must be higher than the approval threshold and no higher than this circle's ${approverCount} approver${approverCount === 1 ? "" : "s"}. Add an approver to the circle first`
+      : `The dispute threshold is ${disputeThreshold}, but this circle has ${approverCount} approvers`;
   return null;
 }
 
@@ -80,12 +80,12 @@ export function withdrawalError(
   treasuryBalance: bigint | null,
 ): string | null {
   if (!/^component_[0-9a-f]{64}$/.test(to))
-    return "the destination is not a component address";
-  if (amountMicro <= 0n) return "the amount must be more than zero";
+    return "The destination is not a component address";
+  if (amountMicro <= 0n) return "The amount must be more than zero";
   if (treasuryBalance === null)
-    return "the treasury balance could not be read, so a withdrawal cannot be proposed yet. read it again and retry.";
+    return "The treasury balance could not be read, so a withdrawal cannot be proposed yet. Read it again and retry.";
   if (amountMicro > treasuryBalance)
-    return "that is more than the treasury holds";
+    return "That is more than the treasury holds";
   return null;
 }
 
@@ -168,26 +168,26 @@ export interface CircleInfo {
 // ---------- strict field readers ----------
 
 function arr(v: CborValue, what: string): CborValue[] {
-  if (!Array.isArray(v)) throw new Error(`expected an array for ${what}`);
+  if (!Array.isArray(v)) throw new Error(`Expected an array for ${what}`);
   return v;
 }
 
 function int(v: CborValue, what: string): bigint {
   if (typeof v === "bigint") return v;
   if (typeof v === "number") return BigInt(v);
-  throw new Error(`expected an integer for ${what}`);
+  throw new Error(`Expected an integer for ${what}`);
 }
 
 function num(v: CborValue, what: string): number {
   const n = int(v, what);
   if (n > BigInt(Number.MAX_SAFE_INTEGER))
-    throw new Error(`integer too large for ${what}`);
+    throw new Error(`Integer too large for ${what}`);
   return Number(n);
 }
 
 function bytes(v: CborValue, what: string): Uint8Array {
   if (v instanceof Uint8Array) return v;
-  throw new Error(`expected bytes for ${what}`);
+  throw new Error(`Expected bytes for ${what}`);
 }
 
 function hex(v: CborValue, what: string): string {
@@ -196,18 +196,18 @@ function hex(v: CborValue, what: string): string {
 
 function text(v: CborValue, what: string): string {
   if (typeof v === "string") return v;
-  throw new Error(`expected text for ${what}`);
+  throw new Error(`Expected text for ${what}`);
 }
 
 function bool(v: CborValue, what: string): boolean {
   if (typeof v === "boolean") return v;
-  throw new Error(`expected a boolean for ${what}`);
+  throw new Error(`Expected a boolean for ${what}`);
 }
 
 function taggedAddress(v: CborValue, tag: number, prefix: string, what: string): string {
   if (v instanceof Tagged && v.tag === tag)
     return prefix + bytesToHex(bytes(v.value, what));
-  throw new Error(`expected a tagged ${prefix} address for ${what}`);
+  throw new Error(`Expected a tagged ${prefix} address for ${what}`);
 }
 
 function opt<T>(v: CborValue, inner: (x: CborValue) => T): T | null {
@@ -216,7 +216,7 @@ function opt<T>(v: CborValue, inner: (x: CborValue) => T): T | null {
 
 function enumIndex(v: CborValue, what: string): number {
   const parts = arr(v, what);
-  if (parts.length !== 2) throw new Error(`bad enum shape for ${what}`);
+  if (parts.length !== 2) throw new Error(`Bad enum shape for ${what}`);
   return num(parts[0], what);
 }
 
@@ -224,7 +224,7 @@ function enumIndex(v: CborValue, what: string): number {
 
 export function decodeRules(v: CborValue): TenderRules {
   const f = arr(v, "rules");
-  if (f.length !== 11) throw new Error(`rules has ${f.length} fields, expected 11`);
+  if (f.length !== 11) throw new Error(`Rules has ${f.length} fields, expected 11`);
   return {
     specificationHash: hex(f[0], "specification_hash"),
     budgetCap: int(f[1], "budget_cap"),
@@ -250,7 +250,7 @@ export function decodeState(v: CborValue): TenderStateName {
 export function decodeAward(v: CborValue): AwardRecord {
   const f = arr(v, "award");
   // As in state.ts: the on-chain award carries seven fields.
-  if (f.length !== 7) throw new Error(`award has ${f.length} fields, expected 7`);
+  if (f.length !== 7) throw new Error(`Award has ${f.length} fields, expected 7`);
   return {
     winner: hex(f[0], "winner"),
     winningCommitment: hex(f[1], "winning_commitment"),
@@ -264,7 +264,7 @@ export function decodeAward(v: CborValue): AwardRecord {
 
 function decodeOverride(v: CborValue): OverrideRecord {
   const f = arr(v, "override_record");
-  if (f.length !== 3) throw new Error(`override record has ${f.length} fields, expected 3`);
+  if (f.length !== 3) throw new Error(`Override record has ${f.length} fields, expected 3`);
   return {
     chosen: opt(f[0], (x) => hex(x, "chosen")),
     rationaleHash: hex(f[1], "rationale_hash"),
@@ -274,7 +274,7 @@ function decodeOverride(v: CborValue): OverrideRecord {
 
 function decodeDispute(v: CborValue): DisputeRecord {
   const f = arr(v, "dispute");
-  if (f.length !== 4) throw new Error(`dispute record has ${f.length} fields, expected 4`);
+  if (f.length !== 4) throw new Error(`Dispute record has ${f.length} fields, expected 4`);
   return {
     evidenceHash: hex(f[0], "evidence_hash"),
     epoch: num(f[1], "epoch"),
@@ -285,7 +285,7 @@ function decodeDispute(v: CborValue): DisputeRecord {
 
 function decodeSettlement(v: CborValue): SettlementRecord {
   const f = arr(v, "settlement");
-  if (f.length !== 3) throw new Error(`settlement has ${f.length} fields, expected 3`);
+  if (f.length !== 3) throw new Error(`Settlement has ${f.length} fields, expected 3`);
   return {
     winner: hex(f[0], "winner"),
     price: int(f[1], "price"),
@@ -299,7 +299,7 @@ export function decodeTenderInfo(v: CborValue): TenderInfo {
   // (measured against tari_bor, see test/fixtures.ts): the array
   // has 22 items before a receipt is issued and 23 after.
   if (f.length !== 22 && f.length !== 23)
-    throw new Error(`tender info has ${f.length} fields, expected 22 or 23`);
+    throw new Error(`Tender info has ${f.length} fields, expected 22 or 23`);
   return {
     circle: taggedAddress(f[0], 128, "component_", "circle"),
     circleName: text(f[1], "circle_name"),
@@ -332,7 +332,7 @@ export function decodeTenderInfo(v: CborValue): TenderInfo {
 export function decodeCircleInfo(v: CborValue): CircleInfo {
   const f = arr(v, "circle info");
   if (f.length !== 6)
-    throw new Error(`circle info has ${f.length} fields, expected 6`);
+    throw new Error(`Circle info has ${f.length} fields, expected 6`);
   return {
     name: text(f[0], "name"),
     approvers: arr(f[1], "approvers").map((k) => hex(k, "approver")),

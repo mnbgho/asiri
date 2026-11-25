@@ -31,21 +31,21 @@ export async function renderVerify(
 ): Promise<void> {
   const wrap = el("div");
   root.append(wrap);
-  const b = box("verify a tender", app.indexer.cfg.label);
+  const b = box("Verify a tender", app.indexer.cfg.label);
   const addrIn = textInput("mono");
-  addrIn.placeholder = "tender component_…";
+  addrIn.placeholder = "Tender component_…";
   if (initial) addrIn.value = initial;
   const rationaleIn = el("textarea");
   rationaleIn.rows = 3;
-  rationaleIn.placeholder = "if the circle overrode the award, paste the published rationale text here. without it, an override reads as unverifiable, which is the correct answer.";
+  rationaleIn.placeholder = "If the circle overrode the award, paste the published rationale text here. Without it, an override reads as unverifiable, which is the correct answer.";
   b.body.append(
-    field("tender", addrIn),
-    field("override rationale (only when there was an override)", rationaleIn),
+    field("Tender", addrIn),
+    field("Override rationale (only when there was an override)", rationaleIn),
   );
   const results = el("div");
   // The checks' outcome is announced as it lands, not only shown.
   setAria(results, "aria-live", "polite");
-  const runBtn = el("button", "btn btn-blue", "run the checks");
+  const runBtn = el("button", "btn btn-blue", "Run the checks");
   const run = async () => {
     results.replaceChildren();
     const addr = addrIn.value.trim();
@@ -54,8 +54,8 @@ export async function renderVerify(
         "div",
         "err",
         /^(vault|resource|template)_[0-9a-f]{64}$/.test(addr)
-          ? plainAddressError(addr, new Error("not a component"))
-          : "enter a tender component address",
+          ? plainAddressError(addr, new Error("Not a component"))
+          : "Enter a tender component address",
       );
       setAria(errEl, "role", "alert");
       results.append(errEl);
@@ -76,7 +76,7 @@ export async function renderVerify(
         "notice",
         `${passed} of ${report.rows.length} checks passed` +
           (unread ? `, ${unread} could not be read` : "") +
-          `. every ${unread ? "other " : ""}value above was recomputed from the public record on ${app.indexer.cfg.label}, not taken from the tender's own claims.`,
+          `. Every ${unread ? "other " : ""}value above was recomputed from the public record on ${app.indexer.cfg.label}, not taken from the tender's own claims.`,
       );
       results.prepend(summary);
     } catch (e) {
