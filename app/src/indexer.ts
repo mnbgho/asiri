@@ -83,6 +83,25 @@ export function defaultNetwork(
   return "mainnet";
 }
 
+/**
+ * A read that failed in transit: the network, the proxy, or the
+ * indexer did not deliver usable bytes. Bytes that arrived but
+ * cannot be decoded are never a TransportError; they are data
+ * errors, and callers report them as failures, not as unreadable.
+ * Mirrors the standalone verifier's TransportError.
+ */
+export class TransportError extends Error {}
+
+/** Bytes arrived from the indexer but are not shaped like the
+ *  record they claim to be. Distinct from TransportError: a
+ *  malformed response is a failure of the record, never an
+ *  unreadable read. */
+export class MalformedResponseError extends Error {}
+
+export function isTransportError(e: unknown): boolean {
+  return e instanceof TransportError;
+}
+
 export class Indexer {
   constructor(public cfg: NetworkConfig) {}
 
@@ -94,14 +113,24 @@ export class Indexer {
       timer = setTimeout(() => ctl.abort(), timeoutMs);
       init.signal = ctl.signal;
     }
+    let res: Response;
     try {
-      const res = await fetch(`${base ?? this.cfg.indexer}${path}`, init);
-      if (res.status === 404) throw new Error(`not found on ${this.cfg.label}: ${path}`);
-      if (!res.ok) throw new Error(`the ${this.cfg.label} indexer answered ${res.status}`);
-      return res.json();
+      res = await fetch(`${base ?? this.cfg.indexer}${path}`, init);
+    } catch (e) {
+      // The fetch never returned, or the timeout aborted it:
+      // nothing usable arrived, so this is a transport failure,
+      // never evidence about the record.
+      throw new TransportError(e instanceof Error ? e.message : String(e));
     } finally {
       if (timer) clearTimeout(timer);
     }
+    if (res.status === 404)
+      throw new TransportError(`not found on ${this.cfg.label}: ${path}`);
+    if (!res.ok)
+      throw new TransportError(`the ${this.cfg.label} indexer answered ${res.status}`);
+    // A body that will not parse as JSON is a data error, not a
+    // transport one: bytes arrived and they are not a record.
+    return res.json();
   }
 
   /** Current epoch from the network endpoint. */
@@ -169,24 +198,52 @@ export class Indexer {
     const bases = [this.cfg.indexer];
     if (this.cfg.indexerFallback) bases.push(this.cfg.indexerFallback);
     bases.push(this.cfg.indexer);
-    let last: unknown = null;
+    // The same rule as the standalone verifier: failover can
+    // rescue a read, so every base is tried whatever the previous
+    // failure was, but the error that survives is chosen by what
+    // it means. Bytes that arrived but would not parse are
+    // evidence the record is invalid and win; only when every
+    // attempt failed in transit is the failure a transport error.
+    let lastTransport: unknown = null;
+    let firstData: unknown = null;
     for (const base of bases) {
       try {
         return await this.get(path, base, 30_000);
       } catch (e) {
-        last = e;
+        if (isTransportError(e)) lastTransport = e;
+        else if (!firstData) firstData = e;
       }
     }
-    throw last instanceof Error ? last : new Error(String(last));
+    const err = firstData ?? lastTransport;
+    throw err instanceof Error ? err : new Error(String(err));
   }
 
   async events(substateId: string): Promise<{ txId: string; topic: string }[]> {
     const body = (await this.getJson(
       `/transactions/events?substate_id=${encodeURIComponent(substateId)}`,
     )) as { events?: unknown[] } | unknown[];
-    const raw = Array.isArray(body) ? body : (body.events ?? []);
+    // The indexer serves a list, or an object with a list under
+    // "events". Anything else is malformed delivered data: an
+    // event entry without a transaction id cannot be read as an
+    // event list with fewer transactions, because a skipped entry
+    // could be the one carrying a reveal. An object without an
+    // "events" key reads as no events; the failure mode stays
+    // safe, since the reveal check reports the reveals as could
+    // not be checked when nothing was read.
+    const raw: unknown = Array.isArray(body)
+      ? body
+      : (body as { events?: unknown } | null)?.events;
+    if (raw === undefined && body !== null && typeof body === "object" && !("events" in body)) {
+      return [];
+    }
+    if (!Array.isArray(raw)) {
+      throw new MalformedResponseError("the event list is not a list");
+    }
     return raw.map((entry) => {
       if (Array.isArray(entry)) {
+        if (entry.length === 0 || typeof entry[0] !== "string" || !entry[0]) {
+          throw new MalformedResponseError("malformed event entry");
+        }
         let topic = "event";
         if (typeof entry[1] === "string") {
           try {
@@ -197,13 +254,20 @@ export class Indexer {
             /* keep the default topic */
           }
         }
-        return { txId: String(entry[0]), topic };
+        return { txId: entry[0], topic };
       }
-      const obj = entry as Record<string, unknown>;
-      return {
-        txId: String(obj.transaction_id ?? obj.tx_id ?? ""),
-        topic: String(obj.topic ?? "event"),
-      };
+      if (entry !== null && typeof entry === "object") {
+        const obj = entry as Record<string, unknown>;
+        const txId = obj.transaction_id ?? obj.tx_id ?? "";
+        if (typeof txId !== "string" || !txId) {
+          throw new MalformedResponseError("malformed event entry");
+        }
+        return {
+          txId,
+          topic: String(obj.topic ?? "event"),
+        };
+      }
+      throw new MalformedResponseError("malformed event entry");
     });
   }
 

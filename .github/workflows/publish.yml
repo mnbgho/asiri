@@ -1,0 +1,67 @@
+# Publish asiri-verify to PyPI with Trusted Publishing (OIDC, no API token).
+#
+# Pending publisher the user must create in PyPI first, at
+# https://pypi.org/manage/account/publishing/ (project does not
+# exist yet, so it is a *pending* publisher):
+#   PyPI Project Name: asiri-verify
+#   Owner: mnbgho
+#   Repository name: asiri
+#   Workflow name: publish.yml  (the filename, not the `name:` below)
+#   Environment name: pypi
+# Without that record the publish job fails with invalid-publisher.
+# No token, password, or secret is used anywhere in this workflow.
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+      - name: Run the verifier tests
+        run: |
+          cd packages/asiri-verify
+          PYTHONPATH=src python tests/test_verify.py
+      - name: Build sdist and wheel
+        working-directory: packages/asiri-verify
+        run: |
+          python -m pip install -U build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Upload distributions as artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: packages/asiri-verify/dist/
+          if-no-files-found: error
+
+  publish:
+    name: Upload release to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/asiri-verify
+    permissions:
+      # Mandatory for Trusted Publishing (OIDC).
+      id-token: write
+      contents: read
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

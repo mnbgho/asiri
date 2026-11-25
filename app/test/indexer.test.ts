@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { Indexer, NETWORKS } from "../src/indexer";
+import { Indexer, MalformedResponseError, NETWORKS } from "../src/indexer";
 
 // The template substate carries the whole WASM binary and the
 // public indexers intermittently stall serving it, so a large
@@ -25,7 +25,16 @@ beforeEach(() => {
     const u = String(url);
     calls.push({ url: u, signal: Boolean(init?.signal) });
     const body = behaviour(u);
-    return { ok: true, status: 200, json: async () => body };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => {
+        // A body that is itself an error stands in for a response
+        // whose JSON will not parse.
+        if (body instanceof Error) throw body;
+        return body;
+      },
+    };
   }) as typeof fetch;
 });
 
@@ -104,5 +113,40 @@ describe("indexer large reads", () => {
   it("has the esmeralda fallback configured", () => {
     expect(NETWORKS.esmeralda.indexerFallback).toBe(FALLBACK);
     expect(NETWORKS.mainnet.indexerFallback).toBeNull();
+  });
+});
+
+describe("indexer event list shapes", () => {
+  it("rejects an event list that is not a list", async () => {
+    behaviour = () => ({ events: "not a list" });
+    await expect(indexer().events("component_x")).rejects.toThrow(
+      MalformedResponseError,
+    );
+  });
+
+  it("reads an empty object as no events", async () => {
+    behaviour = () => ({});
+    await expect(indexer().events("component_x")).resolves.toEqual([]);
+  });
+
+  it("rejects an event entry without a transaction id", async () => {
+    behaviour = () => [{ nope: 1 }];
+    await expect(indexer().events("component_x")).rejects.toThrow(
+      MalformedResponseError,
+    );
+  });
+
+  it("reads pair and object entries", async () => {
+    behaviour = () => [["tx-1", "payload"], { transaction_id: "tx-2" }];
+    const got = await indexer().events("component_x");
+    expect(got.map((e) => e.txId)).toEqual(["tx-1", "tx-2"]);
+  });
+
+  it("prefers a served-but-invalid body over a transport failure", async () => {
+    behaviour = (url) => {
+      if (url.startsWith(PRIMARY)) return new SyntaxError("Unexpected token");
+      throw new Error("stalled");
+    };
+    await expect(indexer().events("component_x")).rejects.toThrow(SyntaxError);
   });
 });

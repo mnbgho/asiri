@@ -117,7 +117,7 @@ describe("landing copy", () => {
     const r = root();
     await renderLanding(app, r, go);
     const text = (r as unknown as FakeEl).textContent;
-    expect(text).toContain("tenders from the featured circle");
+    expect(text).toContain("Tenders from the featured circle");
     expect(text).toContain(
       "builder-run: run by the builders across their own accounts",
     );
@@ -195,7 +195,7 @@ describe("approvals screen", () => {
     const r = root();
     await renderApprovals(app, r, go);
     const text = (r as unknown as FakeEl).textContent;
-    expect(text).toContain("needs you now");
+    expect(text).toContain("Needs you now");
     expect(text).toContain(INBOX_SCOPE_NOTE);
     expect(text).toContain("waiting for you");
   });

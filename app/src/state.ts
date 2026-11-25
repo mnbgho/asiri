@@ -128,6 +128,14 @@ function arr(v: CborValue, what: string): CborValue[] {
   if (!Array.isArray(v)) throw new Error(`expected an array for ${what}`);
   return v;
 }
+/** An array with exactly n fields: a record with trailing or
+ *  missing fields is malformed, not a shorter form. */
+function exact(v: CborValue, n: number, what: string): CborValue[] {
+  const g = arr(v, what);
+  if (g.length !== n)
+    throw new Error(`${what} has ${g.length} fields, expected ${n}`);
+  return g;
+}
 function int(v: CborValue, what: string): bigint {
   if (typeof v === "bigint") return v;
   if (typeof v === "number") return BigInt(v);
@@ -222,7 +230,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
     deliveryDeadline: opt(f[15], (x) => num(x, "delivery_deadline")),
     claimDeadline: opt(f[16], (x) => num(x, "claim_deadline")),
     commitments: arr(f[17], "commitments").map((c) => {
-      const g = arr(c, "commitment");
+      const g = exact(c, 5, "commitment");
       return {
         seller: hex(g[0], "seller"),
         commitment: hex(g[1], "commitment"),
@@ -232,7 +240,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
       };
     }),
     reveals: arr(f[18], "reveals").map((r) => {
-      const g = arr(r, "reveal");
+      const g = exact(r, 6, "reveal");
       return {
         seller: hex(g[0], "seller"),
         price: int(g[1], "price"),
@@ -243,17 +251,23 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
       };
     }),
     award: opt(f[20], (x) => {
-      const g = arr(x, "award");
+      // The on-chain award carries seven fields: the five the
+      // checks use, plus the epoch it was computed at and whether
+      // an executed override put it in place. Measured live on
+      // the mainnet gate tender, 2026-11-25.
+      const g = exact(x, 7, "award");
       return {
         winner: hex(g[0], "winner"),
         winningCommitment: hex(g[1], "winning_commitment"),
         winningPrice: int(g[2], "winning_price"),
         commitmentsCount: num(g[3], "commitments_count"),
         revealsCount: num(g[4], "reveals_count"),
+        epoch: num(g[5], "epoch"),
+        byOverride: bool(g[6], "by_override"),
       };
     }),
     overrideProposals: arr(f[21], "override_proposals").map((p) => {
-      const g = arr(p, "override proposal");
+      const g = exact(p, 6, "override proposal");
       return {
         id: num(g[0], "id"),
         chosen: opt(g[1], (x) => hex(x, "chosen")),
@@ -264,7 +278,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
       };
     }),
     overrideRecord: opt(f[22], (x) => {
-      const g = arr(x, "override record");
+      const g = exact(x, 3, "override record");
       return {
         chosen: opt(g[0], (y) => hex(y, "chosen")),
         rationaleHash: hex(g[1], "rationale_hash"),
@@ -290,7 +304,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
       };
     }),
     disputeVotes: arr(f[25], "dispute_votes").map((d) => {
-      const g = arr(d, "dispute vote");
+      const g = exact(d, 3, "dispute vote");
       return {
         signer: hex(g[0], "signer"),
         payWinner: bool(g[1], "pay_winner"),
@@ -298,7 +312,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
       };
     }),
     settlement: opt(f[26], (x) => {
-      const g = arr(x, "settlement");
+      const g = exact(x, 3, "settlement");
       return {
         winner: hex(g[0], "winner"),
         price: int(g[1], "price"),
@@ -313,7 +327,7 @@ export function decodeTenderState(root: CborValue): TenderComponentState {
     forfeitsClaimedByCircle: bool(f[32], "forfeits_claimed_by_circle"),
     receiptIssued: f[33] !== null,
     approverChanges: arr(f[34], "approver_changes").map((p) => {
-      const g = arr(p, "approver change");
+      const g = exact(p, 5, "approver change");
       return {
         id: num(g[0], "id"),
         newApprovers: keys(g[1], "new_approvers"),
@@ -445,7 +459,7 @@ export function decodeCircleState(root: CborValue): CircleComponentState {
     treasuryVault: vaultId(f[5], "treasury"),
     tenders: arr(f[6], "tenders").map((t) => addr(t, 128, "component_", "tender")),
     withdrawals: arr(f[7], "withdrawals").map((w) => {
-      const g = arr(w, "withdrawal");
+      const g = exact(w, 6, "withdrawal");
       return {
         id: num(g[0], "id"),
         amount: int(g[1], "amount"),
@@ -456,7 +470,7 @@ export function decodeCircleState(root: CborValue): CircleComponentState {
       };
     }),
     approverChanges: arr(f[8], "approver_changes").map((p) => {
-      const g = arr(p, "approver change");
+      const g = exact(p, 6, "approver change");
       return {
         id: num(g[0], "id"),
         newApprovers: keys(g[1], "new_approvers"),

@@ -137,6 +137,7 @@ mod circle {
                 "withdrawal exceeds the treasury balance"
             );
             let id = self.next_proposal_id;
+            assert!(id < u32::MAX, "proposal id overflow");
             self.next_proposal_id += 1;
             self.withdrawals.push(WithdrawalProposal {
                 id,
@@ -204,6 +205,7 @@ mod circle {
             self.assert_approver();
             validate_approver_set(&new_approvers, new_threshold);
             let id = self.next_proposal_id;
+            assert!(id < u32::MAX, "proposal id overflow");
             self.next_proposal_id += 1;
             self.approver_changes.push(ApproverChangeProposal {
                 id,

@@ -119,7 +119,7 @@ describe("landing at full Section 15A scope", () => {
     expect(signin[0].textContent).toContain("open the app");
     expect(signin[0].textContent).toContain("asiri");
     const text = r.textContent;
-    for (const link of ["tenders", "how it works", "questions", "the proof"]) {
+    for (const link of ["Tenders", "How it works", "Questions", "The proof"]) {
       expect(text).toContain(link);
     }
   });
@@ -127,7 +127,7 @@ describe("landing at full Section 15A scope", () => {
   it("hero states the mechanism and the proof, with the seal", async () => {
     const r = await render();
     const text = r.textContent;
-    expect(text).toContain("everyone says their tender is fair");
+    expect(text).toContain("Everyone says their tender is fair");
     expect(text).toContain("the proof.");
     expect(text).toContain("the template awards the lowest valid revealed price");
     expect(text).toContain("even the buyer cannot peek");
@@ -190,13 +190,13 @@ describe("landing at full Section 15A scope", () => {
     const steps = r.querySelectorAll(".lstep");
     expect(steps).toHaveLength(7);
     const titles = steps.map((s) => s.textContent);
-    expect(titles[0]).toContain("form a circle");
-    expect(titles[1]).toContain("lock the rules and the budget");
-    expect(titles[2]).toContain("sellers commit sealed bids");
-    expect(titles[3]).toContain("bids open only on reveal");
-    expect(titles[4]).toContain("the lowest revealed bid wins");
-    expect(titles[5]).toContain("delivery is confirmed");
-    expect(titles[6]).toContain("then the winner is paid");
+    expect(titles[0]).toContain("Form a circle");
+    expect(titles[1]).toContain("Lock the rules and the budget");
+    expect(titles[2]).toContain("Sellers commit sealed bids");
+    expect(titles[3]).toContain("Bids open only on reveal");
+    expect(titles[4]).toContain("The lowest revealed bid wins");
+    expect(titles[5]).toContain("Delivery is confirmed");
+    expect(titles[6]).toContain("Then the winner is paid");
     // Each step links to the screen where that step is done
     // or proven, in the app's own route order.
     const hrefs = r
@@ -260,10 +260,36 @@ describe("landing at full Section 15A scope", () => {
     expect(rules.source).toContain("refused live on mainnet");
   });
 
-  it("renders the rig console waiting, with all four attack buttons", async () => {
+  it("carries a mobile menu: ASIRI logo and a hamburger, with the nav parts inside the menu", async () => {
+    const r = await render();
+    const logo = r.querySelectorAll(".lp-logo");
+    expect(logo).toHaveLength(1);
+    expect(logo[0].textContent).toBe("ASIRI");
+    const burger = r.querySelectorAll(".lp-burger");
+    expect(burger).toHaveLength(1);
+    const menu = r.querySelectorAll(".lp-menu");
+    expect(menu).toHaveLength(1);
+    // The three desktop nav parts live inside the menu, so the
+    // mobile dropdown shows the same links and the same open
+    // the app action, not a copy of them.
+    const menuText = menu[0].textContent;
+    expect(menuText).toContain("mainnet");
+    for (const link of ["Tenders", "How it works", "Questions", "The proof"]) {
+      expect(menuText).toContain(link);
+    }
+    expect(menuText).toContain("open the app");
+  });
+
+  it("renders the rig console pre-filled with the first attack's answer, with all four attack buttons", async () => {
     const r = await render();
     const text = r.textContent;
-    expect(text).toContain("waiting for an attack…");
+    // The console opens on the peek answer, not empty: the
+    // visitor sees what the chain does to a rig attempt
+    // without clicking anything.
+    expect(text).toContain("read the price inside a sealed commitment");
+    expect(text).toContain("there is no method to call");
+    expect(text).toContain("the tender is untouched.");
+    expect(text).not.toContain("waiting for an attack…");
     for (const label of [
       "peek at the sealed bids",
       "change the budget after bids",
@@ -289,7 +315,7 @@ describe("landing at full Section 15A scope", () => {
     const r = await render();
     const text = r.textContent;
     expect(text).toContain("asiri means a secret that stays kept");
-    for (const col of ["product", "verify", "the app"]) {
+    for (const col of ["Product", "Verify", "The app"]) {
       expect(text).toContain(col);
     }
     expect(text).toContain("asiri, a sealed tender protocol.");

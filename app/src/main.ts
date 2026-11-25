@@ -1,6 +1,6 @@
 // Entry point and hash router. Two views: the landing page and
 // the app frame (sidebar, network switch, wallet card, screens).
-import { App, el, explorerLink, setAria, short, tari } from "./app";
+import { App, cap, el, explorerLink, setAria, short, tari } from "./app";
 import { fundingApplies, fundingGuidance } from "./funding";
 import { networkPill } from "./indexer";
 import { updateDeadlineSpans } from "./time";
@@ -19,6 +19,20 @@ import "./style.css";
 
 const app = new App();
 const root = document.getElementById("root")!;
+
+// The wallet card's renderer, refreshed when the wallet gate
+// modal connects from its own button: the connection shows in
+// the sidebar without a reload. Reassigned on every route, so
+// it always points at the current frame's card.
+let refreshWalletCard: (() => void) | null = null;
+if (
+  typeof window !== "undefined" &&
+  typeof window.addEventListener === "function"
+) {
+  window.addEventListener("asiri:wallet-connected", () => {
+    refreshWalletCard?.();
+  });
+}
 
 function go(hash: string): void {
   if (location.hash === hash) void route();
@@ -110,37 +124,37 @@ const TITLES: Record<string, string> = {
 const NAV: { key: string; label: string; helper: string }[] = [
   {
     key: "overview",
-    label: "circles and tenders",
+    label: "Circles and tenders",
     helper: "every circle and tender this browser can see, with its live state",
   },
   {
     key: "create",
-    label: "start a circle or tender",
+    label: "Start a circle or tender",
     helper: "form the buying group, then lock its tender's rules and budget",
   },
   {
     key: "seller",
-    label: "bid and reveal",
+    label: "Bid and reveal",
     helper: "sellers: commit a sealed bid, then open it in the reveal window",
   },
   {
     key: "approvals",
-    label: "approvals",
+    label: "Approvals",
     helper: "what is waiting for your signature: overrides, deliveries, disputes",
   },
   {
     key: "results",
-    label: "results",
+    label: "Results",
     helper: "the proof: finished tenders, checked by two verifiers, with receipts",
   },
   {
     key: "verify",
-    label: "verify a tender",
+    label: "Verify a tender",
     helper: "re-run the checks on any tender yourself, live, no wallet needed",
   },
   {
     key: "help",
-    label: "help",
+    label: "Help",
     helper: "the questions every new circle asks, answered plainly",
   },
 ];
@@ -190,6 +204,40 @@ async function route(): Promise<void> {
   logo.href = "#/";
   side.append(logo);
 
+  // The mobile top bar: ASIRI on the left, the hamburger on
+  // the right. Hidden on desktop by the stylesheet. The
+  // network switch, the nav and the wallet card live inside
+  // .side-menu, which vanishes (display: contents) on desktop
+  // so they lay out exactly as before, and drops down from
+  // the bar as one panel on a phone.
+  const sideTop = el("div", "side-top");
+  const sideLogo = el("a", "lp-logo", "ASIRI");
+  sideLogo.href = "#/";
+  const sideBurger = el("button", "burger");
+  setAria(sideBurger, "aria-label", "open the menu");
+  setAria(sideBurger, "aria-expanded", "false");
+  sideBurger.append(el("span"), el("span"), el("span"));
+  sideTop.append(sideLogo, sideBurger);
+  side.append(sideTop);
+  const menu = el("div", "side-menu");
+  side.append(menu);
+  const setSideMenuOpen = (open: boolean): void => {
+    // The class string is edited directly: classList.toggle
+    // exists in a real browser, and the unit test fake DOM
+    // implements add and contains only, so the string form
+    // works in both.
+    const parts = side.className.split(/\s+/).filter(Boolean);
+    const has = parts.includes("menu-open");
+    if (open && !has) side.className = [...parts, "menu-open"].join(" ");
+    if (!open && has)
+      side.className = parts.filter((c) => c !== "menu-open").join(" ");
+    setAria(sideBurger, "aria-expanded", open ? "true" : "false");
+    setAria(sideBurger, "aria-label", open ? "close the menu" : "open the menu");
+  };
+  sideBurger.addEventListener("click", () => {
+    setSideMenuOpen(!side.className.split(/\s+/).includes("menu-open"));
+  });
+
   const seg = el("div", "seg");
   for (const n of ["mainnet", "esmeralda"] as const) {
     const b = el("button", n === app.network ? "on" : undefined, n);
@@ -218,11 +266,15 @@ async function route(): Promise<void> {
     });
     seg.append(b);
   }
-  side.append(seg);
+  menu.append(seg);
 
   const nav = el("nav", "snav");
   for (const item of NAV) {
     const b = el("button", item.key === screen ? "on" : undefined);
+    // The helper line shows as a hover and focus tooltip, so it
+    // leaves the button's visible text; the full label and
+    // helper stay the button's accessible name.
+    setAria(b, "aria-label", `${item.label}: ${item.helper}`);
     b.append(
       el("span", "nav-label", item.label),
       el("span", "nav-help", item.helper),
@@ -230,66 +282,104 @@ async function route(): Promise<void> {
     b.addEventListener("click", () => go(`#/app/${item.key}`));
     nav.append(b);
   }
-  side.append(nav);
+  // Tapping a nav link closes the mobile menu at once: the
+  // route rebuilds the frame anyway, and the immediate close
+  // reads faster than waiting for it.
+  nav.addEventListener("click", () => setSideMenuOpen(false));
+  menu.append(nav);
 
   const walletCard = el("div", "wallet-card");
   const renderWallet = () => {
     walletCard.replaceChildren();
-    const row1 = el("div", "row");
-    row1.append(el("span", undefined, "network"), el("b", undefined, app.indexer.cfg.label));
-    walletCard.append(row1);
     if (app.wallet.account) {
-      // The account can be connected while the wallet sits on
-      // another network (the switch was declined at connect, or
-      // the user switched inside the wallet afterwards). Say so
-      // on the card: actions are blocked until the two match.
-      if (app.wallet.network && app.wallet.network !== app.network) {
+      // Connected state, one left edge, top to bottom:
+      // status, balance, account, public key, disconnect.
+      // Labels sit above their values, never beside them, so
+      // a long address or key cannot wrap its label with it.
+      // The disconnected state below is untouched.
+      const mismatched =
+        !!app.wallet.network && app.wallet.network !== app.network;
+      const head = el("div", "wn-head");
+      head.append(el("span", "wn-dot"));
+      head.append(el("span", "wn-status", "Connected"));
+      head.append(el("span", "pill pill-tint", app.indexer.cfg.label));
+      walletCard.append(head);
+      if (mismatched) {
+        // The account can be connected while the wallet sits
+        // on another network (the switch was declined at
+        // connect, or the user switched inside the wallet
+        // afterwards). One compact warning under the header,
+        // not a paragraph between the rows, and the balance
+        // stays hidden until the two match: a figure read
+        // against the wrong network must not stand as this
+        // network's balance.
         walletCard.append(
           el(
             "div",
-            "small mt",
-            `your wallet is on ${app.wallet.network}. the app is showing ${app.indexer.cfg.label}, and actions are blocked until the two match. switch the network in your wallet, or switch the app's network.`,
+            "wn-warn",
+            `your wallet is on ${app.wallet.network}. actions are blocked until the two match. switch the network in your wallet, or switch the app's network.`,
           ),
         );
       }
-      const row2 = el("div", "row");
-      row2.append(el("span", undefined, "account"), el("b", undefined, short(app.wallet.account)));
-      walletCard.append(row2);
+      if (!mismatched && app.balance !== null) {
+        walletCard.append(el("div", "wn-div"));
+        walletCard.append(el("div", "wn-label", "balance"));
+        const bal = el("div", "wn-balance", tari(app.balance));
+        bal.append(el("span", undefined, " tari"));
+        walletCard.append(bal);
+        if (fundingApplies(app.balance)) {
+          walletCard.append(el("div", "wn-note", fundingGuidance(app.network)));
+        }
+      }
+      walletCard.append(el("div", "wn-div"));
+      const accountField = el("div", "wn-field");
+      accountField.append(el("div", "wn-label", "account"));
+      const accountRow = el("div", "wn-value-row");
+      const accountValue = el("span", "wn-value", short(app.wallet.account));
+      setAria(accountValue, "title", app.wallet.account);
+      accountRow.append(accountValue);
+      accountField.append(accountRow);
+      walletCard.append(accountField);
       if (app.myKey) {
-        const row3 = el("div", "row");
-        row3.append(el("span", undefined, "your public key"), el("b", undefined, short(app.myKey)));
-        walletCard.append(row3);
-        const copyBtn = el("button", "btn btn-white btn-sm btn-block mt", "copy my public key");
+        const keyField = el("div", "wn-field");
+        keyField.append(el("div", "wn-label", "your public key"));
+        const keyRow = el("div", "wn-value-row");
+        const keyValue = el("span", "wn-value", short(app.myKey));
+        setAria(keyValue, "title", app.myKey);
+        const copyBtn = el("button", "wn-copy", "Copy");
+        setAria(copyBtn, "aria-label", "copy my public key");
         copyBtn.addEventListener("click", () => {
           void (async () => {
             try {
               await navigator.clipboard.writeText(app.myKey!);
-              copyBtn.textContent = "copied. share it with your circle.";
+              copyBtn.textContent = "Copied";
             } catch {
-              copyBtn.textContent = app.myKey!;
+              // A failed copy must not spill the full key into
+              // the button: the tidy row stays tidy.
+              copyBtn.textContent = "Copy failed";
             }
           })();
         });
-        walletCard.append(copyBtn);
-        walletCard.append(
-          el("div", "small mt", "your circle needs this key to make you an approver or to pay you as a seller."),
+        keyRow.append(keyValue, copyBtn);
+        keyField.append(keyRow);
+        keyField.append(
+          el("div", "wn-note", "share this key with your circle to join or get paid."),
         );
+        walletCard.append(keyField);
       }
-      if (app.balance !== null) {
-        const row4 = el("div", "row");
-        row4.append(el("span", undefined, "balance"), el("b", undefined, `${tari(app.balance)} tari`));
-        walletCard.append(row4);
-      }
-      if (fundingApplies(app.balance)) {
-        walletCard.append(el("div", "small mt", fundingGuidance(app.network)));
-      }
-      const disconnectBtn = el("button", "btn btn-white btn-sm btn-block mt", "disconnect wallet");
+      const disconnectBtn = el("button", "wn-disconnect", "Disconnect");
       disconnectBtn.addEventListener("click", () => {
         app.disconnect();
         renderWallet();
       });
       walletCard.append(disconnectBtn);
     } else {
+      // Disconnected state, unchanged: one network row, one
+      // blue button. The connected state above carries the
+      // network in its header instead.
+      const row1 = el("div", "row");
+      row1.append(el("span", undefined, "network"), el("b", undefined, app.indexer.cfg.label));
+      walletCard.append(row1);
       const connectBtn = el("button", "btn btn-blue btn-sm btn-block mt", "connect wallet");
       connectBtn.addEventListener("click", () => {
         void (async () => {
@@ -331,7 +421,8 @@ async function route(): Promise<void> {
     }
   };
   renderWallet();
-  side.append(walletCard);
+  menu.append(walletCard);
+  refreshWalletCard = renderWallet;
   frame.append(side);
 
   const main = el("main", "main");
@@ -341,7 +432,7 @@ async function route(): Promise<void> {
   // heading order never skips a level. (It rendered as an h2
   // with h3 boxes until the accessibility pass: same styles,
   // the stylesheet names both levels.)
-  head.append(el("h1", undefined, TITLES[screen] ?? "circles and tenders"));
+  head.append(el("h1", undefined, cap(TITLES[screen] ?? "circles and tenders")));
   head.append(el("span", "pill pill-tint", networkPill(app.indexer.cfg)));
   head.append(el("span", "spacer"));
   const newBtn = el("button", "btn btn-blue btn-sm", "new tender");

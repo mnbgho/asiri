@@ -10,7 +10,7 @@ import { sha256 } from "../hash";
 import { thresholdError, type TenderRules } from "../model";
 import { decodeCircleState, splitComponent } from "../state";
 import { findNewComponents } from "../wallet";
-import { actionButton, box, chainError, field, notice, textInput } from "./common";
+import { actionButton, box, chainError, field, notice, requireWallet, textInput } from "./common";
 import type { ActionOutcome } from "../finalize";
 
 /**
@@ -91,7 +91,8 @@ export async function renderCreate(
   }
   const createCircleBtn = actionButton("create circle", "btn-blue", async () => {
     if (!cfg.circleTemplate) throw new Error("template not published on this network");
-    if (!app.wallet.account) throw new Error("connect your wallet first");
+    const account = requireWallet(app, "create a circle");
+    if (!account) return;
     const approvers = keyList(approversIn.value);
     if (!approvers.length) throw new Error("add at least one approver key");
     const threshold = Number(thresholdIn.value);
@@ -104,7 +105,7 @@ export async function renderCreate(
     const { result } = await app.wallet.submit(
       B.buildCreateCircle(cfg.circleTemplate, nameIn.value.trim(), approvers, threshold, auditor, cfg.tenderTemplate),
     );
-    const addr = await findCreated(app, result, [app.wallet.account], cfg.circleTemplate);
+    const addr = await findCreated(app, result, [account], cfg.circleTemplate);
     app.watch("circles", addr);
     await app.deriveIdentity();
     go(`#/app/circle/${addr}`);
@@ -234,7 +235,8 @@ export async function renderCreate(
   };
   const createTenderBtn = actionButton("create tender, register it, and lock the escrow", "btn-blue", async () => {
     if (!cfg.tenderTemplate) throw new Error("template not published on this network");
-    if (!app.wallet.account) throw new Error("connect your wallet first");
+    const account = requireWallet(app, "create a tender, register it, and lock the escrow");
+    if (!account) return;
     const circle = circleIn.value.trim();
     if (!circle.startsWith("component_")) throw new Error("enter the circle address");
     const sub = await app.indexer.substate(circle);
@@ -276,14 +278,14 @@ export async function renderCreate(
     status.textContent = "step 1 of 3: creating the tender. approve it in your wallet.";
     await app.guardWalletNetwork();
     const created = await app.wallet.submit(B.buildCreateTender(cfg.tenderTemplate, circle, rules));
-    const tender = await findCreated(app, created.result, [app.wallet.account, circle], cfg.tenderTemplate);
+    const tender = await findCreated(app, created.result, [account, circle], cfg.tenderTemplate);
     app.watch("tenders", tender);
     status.textContent = "step 2 of 3: registering the tender on its circle. approve it in your wallet.";
     const reg = await app.submitAction(B.buildRegisterTender(circle, tender));
     if (stepFailed(reg.outcome, "step 2 of 3: registering the tender")) return;
     status.textContent = "step 3 of 3: locking the rules and funding the escrow to the cap. approve it in your wallet.";
     const lock = await app.submitAction(
-      B.buildLockAndFund(app.wallet.account, tender, rules.budgetCap),
+      B.buildLockAndFund(account, tender, rules.budgetCap),
     );
     if (stepFailed(lock.outcome, "step 3 of 3: locking the tender")) return;
     if (lock.outcome.kind === "unconfirmed") {

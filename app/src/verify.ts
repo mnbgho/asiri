@@ -1,9 +1,9 @@
 // The verifier, running in the browser against indexer data.
 // The same checks as the standalone script (scripts/verify.py):
 // a judge with no wallet can confirm a tender's whole record.
-import { bytesToHex, decode, hexToBytes } from "./cbor";
+import { bytesToHex, decode, hexToBytes, type CborValue } from "./cbor";
 import { commitmentHash, rulesHash, sha256 } from "./hash";
-import type { Indexer } from "./indexer";
+import { isTransportError, MalformedResponseError, type Indexer } from "./indexer";
 import {
   decodeTenderState,
   decodeVaultBalance,
@@ -71,7 +71,20 @@ async function findRevealArgs(
   // not a reveal that does not exist, and the caller must not
   // report it as one.
   const out = new Map<string, RevealArgs>();
-  const events = await indexer.events(tenderAddress);
+  let events: { txId: string; topic: string }[];
+  try {
+    events = await indexer.events(tenderAddress);
+  } catch (e) {
+    // A malformed history is a failure of the record, not a read
+    // that failed: it propagates so the reveals check fails
+    // instead of reporting could-not-read. Any other failure
+    // means the history itself could not be read: every reveal
+    // is uncheckable, never missing. Mirrors the standalone
+    // verifier, which reports the reveals unknown when the
+    // event list cannot be read.
+    if (e instanceof MalformedResponseError) throw e;
+    return { found: out, unreadable: 1, total: 0 };
+  }
   const txIds = new Set<string>();
   for (const ev of events) {
     if (ev.txId) txIds.add(ev.txId);
@@ -81,7 +94,15 @@ async function findRevealArgs(
     let body: unknown;
     try {
       body = await indexer.transaction(id);
-    } catch {
+    } catch (e) {
+      // A body the indexer served but that will not parse as JSON
+      // is malformed delivered data, not a body that could not be
+      // read. It propagates the same way as a malformed event list.
+      if (e instanceof SyntaxError) {
+        throw new MalformedResponseError(
+          `transaction ${id} could not be decoded: ${e.message}`,
+        );
+      }
       unreadable++;
       continue;
     }
@@ -101,9 +122,14 @@ async function findRevealArgs(
       if (typeof price !== "bigint") continue;
       if (!(identityRaw instanceof Uint8Array)) continue;
       let salt: Uint8Array | null = null;
-      if (Array.isArray(saltRaw) && saltRaw.length === 32)
-        salt = new Uint8Array(saltRaw.map((x) => Number(x)));
-      else if (saltRaw instanceof Uint8Array && saltRaw.length === 32)
+      if (Array.isArray(saltRaw) && saltRaw.length === 32) {
+        // The decoder hands back bigints for CBOR uints, so
+        // convert first and then check the range: a value
+        // outside a byte is malformed data, not a salt.
+        const nums = saltRaw.map((x) => Number(x));
+        if (nums.every((n) => Number.isInteger(n) && n >= 0 && n <= 255))
+          salt = new Uint8Array(nums);
+      } else if (saltRaw instanceof Uint8Array && saltRaw.length === 32)
         salt = saltRaw;
       if (!salt) continue;
       const identity = bytesToHex(identityRaw);
@@ -120,8 +146,30 @@ export async function verifyTender(
   opts: { rationaleText?: string; templateDigest?: string | null } = {},
 ): Promise<{ report: Report; tender: TenderComponentState | null }> {
   const rep = new Report();
+  // The address reaches the indexer as a URL path segment, so a
+  // string that is not a component address must never be fetched:
+  // a traversal in it could reach a different indexer route, and
+  // a mistyped address is not a tender that failed a check.
+  if (!/^component_[0-9a-f]{64}$/.test(tenderAddress)) {
+    rep.add("tender exists", false, "not a component address");
+    return { report: rep, tender: null };
+  }
   const cfg = indexer.cfg;
-  const sub = await indexer.substate(tenderAddress);
+  let sub: { version: number; value: CborValue } | null;
+  try {
+    sub = await indexer.substate(tenderAddress);
+  } catch (e) {
+    // A read that fails is not evidence the tender does not
+    // exist. The standalone verifier reports a failed read as
+    // could not be read; a record that did arrive but cannot be
+    // decoded is the opposite, a failure of the record itself.
+    if (isTransportError(e)) {
+      rep.add("tender exists", null, "the tender could not be read from any indexer");
+    } else {
+      rep.add("tender exists", false, "the tender record is unreadable");
+    }
+    return { report: rep, tender: null };
+  }
   if (!sub) {
     rep.add("tender exists", false, "the tender substate is down");
     return { report: rep, tender: null };
@@ -145,7 +193,20 @@ export async function verifyTender(
       return { report: rep, tender: null };
     }
   }
-  const tender = decodeTenderState(sub.value);
+  let tender: TenderComponentState;
+  try {
+    tender = decodeTenderState(sub.value);
+  } catch (e) {
+    // Name the failure, as the standalone verifier does: a bare
+    // "unreadable" tells the reader nothing about which field
+    // broke the record.
+    rep.add(
+      "tender exists",
+      false,
+      `the tender record is unreadable: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return { report: rep, tender: null };
+  }
   rep.add(
     "tender exists",
     true,
@@ -191,7 +252,12 @@ export async function verifyTender(
           `sha256 of the on-chain code is ${digest}`,
         );
       } catch (e) {
-        rep.add("template code hash", false, e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        if (isTransportError(e)) {
+          rep.add("template code hash", null, `could not be read: ${msg}`);
+        } else {
+          rep.add("template code hash", false, msg);
+        }
       }
     }
   } else {
@@ -226,7 +292,12 @@ export async function verifyTender(
       `escrow ${escrow} + paid out ${accounted - escrow} of cap ${tender.rules.budgetCap}`,
     );
   } catch (e) {
-    rep.add("escrow funding", false, e instanceof Error ? e.message : String(e));
+    const msg = e instanceof Error ? e.message : String(e);
+    if (isTransportError(e)) {
+      rep.add("escrow funding", null, `could not be read: ${msg}`);
+    } else {
+      rep.add("escrow funding", false, msg);
+    }
   }
 
   // reveals
@@ -248,7 +319,22 @@ export async function verifyTender(
       (consistent ? "" : "; commitment records are inconsistent"),
   );
   if (tender.reveals.length > 0) {
-    const { found, unreadable, total } = await findRevealArgs(indexer, tenderAddress);
+    let historyMalformed: string | null = null;
+    let found = new Map<string, RevealArgs>();
+    let unreadable = 0;
+    let total = 0;
+    try {
+      ({ found, unreadable, total } = await findRevealArgs(
+        indexer,
+        tenderAddress,
+      ));
+    } catch (e) {
+      // The history arrived but is not shaped like history. That
+      // is a failure of the record, reported once below, never
+      // folded into could-not-read.
+      if (e instanceof MalformedResponseError) historyMalformed = e.message;
+      else throw e;
+    }
     const commitments = new Map(tender.commitments.map((c) => [c.commitment, c]));
     const failures: string[] = [];
     const couldNotRead: string[] = [];
@@ -288,7 +374,13 @@ export async function verifyTender(
       }
     }
     const totalReveals = tender.reveals.length;
-    if (failures.length) {
+    if (historyMalformed !== null) {
+      rep.add(
+        "reveals verify against commitments",
+        false,
+        `the tender's transaction history is malformed: ${historyMalformed}`,
+      );
+    } else if (failures.length) {
       let detail = failures.join("; ");
       if (couldNotRead.length) {
         detail += `; ${couldNotRead.length} more could not be checked, their transactions could not be read from any indexer`;
@@ -512,7 +604,12 @@ export async function verifyTender(
       `${forfeited} forfeited bonds, locked ${tender.forfeitLocked}, for the circle ${tender.forfeitForCircle}`,
     );
   } catch (e) {
-    rep.add("bond vault reconciles", false, e instanceof Error ? e.message : String(e));
+    const msg = e instanceof Error ? e.message : String(e);
+    if (isTransportError(e)) {
+      rep.add("bond vault reconciles", null, `could not be read: ${msg}`);
+    } else {
+      rep.add("bond vault reconciles", false, msg);
+    }
   }
 
   return { report: rep, tender };

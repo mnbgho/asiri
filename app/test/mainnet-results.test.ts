@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect } from "vitest";
-import { App } from "../src/app";
+import { App, cap } from "../src/app";
 import { bytesToHex } from "../src/cbor";
 import { sha256 } from "../src/hash";
 import {
@@ -396,7 +396,7 @@ describe("mainnet results screen", () => {
     expect(t).toContain("tari mainnet");
     expect(t).toContain("664,908 microtari");
     for (const rec of MAINNET_TENDER_RECORDS) {
-      expect(t).toContain(rec.title);
+      expect(t).toContain(cap(rec.title));
       expect(t).toContain(
         `python3 scripts/verify.py ${rec.tender} --network mainnet`,
       );
@@ -426,14 +426,14 @@ describe("mainnet results screen", () => {
     // The seventh tender: the attack test, its receipt, and
     // the attack record with the chain's own rejections.
     expect(t).toContain("seven tenders ran on mainnet");
-    expect(t).toContain("the attack tender");
+    expect(t).toContain("The attack tender");
     expect(t).toContain(
       `python3 scripts/verify.py ${MAINNET_ATTACK_RECORD.tender} --network mainnet`,
     );
     expect(t).toContain(
       "receipt sha256: 128a855fa956b4c30f90a09a44ea3c6b5ad8fb5841cecc6bb429098757c00526",
     );
-    expect(t).toContain("the attacks: eighteen, all rejected");
+    expect(t).toContain("The attacks: eighteen, all rejected");
     expect(t).toContain(
       "rejected · seller has already committed in this tender",
     );
@@ -449,8 +449,8 @@ describe("mainnet results screen", () => {
       "third's 12 tari bid was committed and never revealed",
     );
     // The esmeralda sections belong to the esmeralda view.
-    expect(t).not.toContain("falsification cards");
-    expect(t).not.toContain("zero-extraction ledger");
+    expect(t).not.toContain("Falsification cards");
+    expect(t).not.toContain("Zero-extraction ledger");
     expect(t).not.toContain("esmeralda testnet");
   });
 });

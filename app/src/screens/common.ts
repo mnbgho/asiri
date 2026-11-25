@@ -1,8 +1,100 @@
 // Small DOM helpers shared by the screens. Everything rendered
 // from chain data goes through textContent, never HTML strings.
-import { clearErrors, el, explorerLink, setAria, tari, type App } from "../app";
+import { clearErrors, cap, el, explorerLink, setAria, tari, type App } from "../app";
+import { looksDeclined, waitForProvider } from "../wallet";
 import type { ActionOutcome } from "../finalize";
 import { feeText, type FeeAction } from "../fees";
+
+/**
+ * The wallet gate: acting needs a wallet, reading never does.
+ * A visitor who tries to act without one gets a modal that
+ * says so and offers the connection, instead of an error
+ * banner. Returns the connected account when the action may
+ * go ahead, and null when the modal opened instead. The modal
+ * is guarded for the unit test fake DOM, which has no body and
+ * no querySelector: in that environment the action is simply
+ * refused.
+ */
+export function requireWallet(app: App, action: string): string | null {
+  if (app.wallet.account) return app.wallet.account;
+  openWalletModal(app, action);
+  return null;
+}
+
+function openWalletModal(app: App, action: string): void {
+  const doc = (globalThis as { document?: Document }).document;
+  if (
+    !doc ||
+    typeof doc.createElement !== "function" ||
+    typeof doc.querySelector !== "function" ||
+    !doc.body ||
+    typeof doc.body.append !== "function"
+  ) {
+    return;
+  }
+  const existing = doc.querySelector(".wallet-modal-overlay");
+  if (existing && typeof existing.remove === "function") existing.remove();
+  const overlay = el("div", "wallet-modal-overlay");
+  setAria(overlay, "role", "dialog");
+  setAria(overlay, "aria-modal", "true");
+  const card = el("div", "wallet-modal");
+  card.append(
+    el("h2", undefined, "Connect your wallet"),
+    el(
+      "p",
+      undefined,
+      `please connect your wallet to ${action}. reading and verifying never need a wallet, but acting does: the chain needs your signature.`,
+    ),
+  );
+  const status = el("div", "small mt");
+  const connectBtn = el("button", "btn btn-blue", "Connect wallet");
+  connectBtn.addEventListener("click", () => {
+    void (async () => {
+      connectBtn.disabled = true;
+      if (!(await waitForProvider())) {
+        status.textContent =
+          "no wallet found. install sapient or open the tari web wallet.";
+        connectBtn.disabled = false;
+        return;
+      }
+      try {
+        await app.wallet.connect();
+      } catch (e) {
+        status.textContent = looksDeclined(e)
+          ? "you declined the connection in your wallet. approve it there to connect."
+          : "the wallet did not connect. try again.";
+        connectBtn.disabled = false;
+        return;
+      }
+      if (app.wallet.network && app.wallet.network !== app.network) {
+        try {
+          await app.wallet.switchNetwork(app.network);
+        } catch {
+          /* the wallet stayed on its own network */
+        }
+      }
+      await app.deriveIdentity();
+      // The sidebar's wallet card re-renders from this event,
+      // so the connection shows there too without a reload.
+      const w = globalThis as { window?: { dispatchEvent?: (e: Event) => void } };
+      if (w.window && typeof w.window.dispatchEvent === "function") {
+        w.window.dispatchEvent(new Event("asiri:wallet-connected"));
+      }
+      overlay.remove();
+    })();
+  });
+  const cancelBtn = el("button", "btn btn-white", "Not now");
+  cancelBtn.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  const row = el("div", "wallet-modal-actions");
+  row.append(connectBtn, cancelBtn);
+  card.append(row, status);
+  overlay.append(card);
+  doc.body.append(overlay);
+  if (typeof connectBtn.focus === "function") connectBtn.focus();
+}
 
 /**
  * How the featured circle's tenders are labelled wherever they
@@ -18,7 +110,7 @@ export function box(title: string, pillText?: string): { box: HTMLElement; body:
   const h = el("div", "box-h");
   // A box is a section under the screen's h1 title, so its
   // heading is an h2: the heading order never skips a level.
-  h.append(el("h2", undefined, title));
+  h.append(el("h2", undefined, cap(title)));
   if (pillText) {
     const s = el("span", "spacer");
     h.append(s, el("span", "pill pill-tint", pillText));

@@ -100,15 +100,15 @@ describe("help surface", () => {
     await renderHelp(app, r);
     const t = text(r);
     for (const q of [
-      "what is an epoch?",
-      "what happens if i never reveal my bid?",
-      "how do bonds and forfeits work?",
-      "what is an override, and what does it cost the circle?",
-      "how does verification work, and what does could not be read mean?",
-      "where does tari come from?",
-      "what does it cost to use asiri?",
-      "i lost my salt. can it be recovered?",
-      "my transaction failed. what do i do?",
+      "What is an epoch?",
+      "What happens if i never reveal my bid?",
+      "How do bonds and forfeits work?",
+      "What is an override, and what does it cost the circle?",
+      "How does verification work, and what does could not be read mean?",
+      "Where does tari come from?",
+      "What does it cost to use asiri?",
+      "I lost my salt. can it be recovered?",
+      "My transaction failed. what do i do?",
     ]) {
       expect(t).toContain(q);
     }
@@ -149,7 +149,7 @@ describe("seller desk backup box", () => {
     const r = root();
     await renderSeller(app, r, go);
     const t = text(r);
-    expect(t).toContain("back up your bids");
+    expect(t).toContain("Back up your bids");
     expect(t).toContain("whoever holds the file can reveal those bids");
     expect(t).toContain("there is no recovery path");
     expect(t).toContain("import a backup file");

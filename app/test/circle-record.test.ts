@@ -76,7 +76,7 @@ const tender: TenderComponentState = {
   reveals: [
     { seller: K1, price: 15_000_000n, epoch: 103, counter: 1, valid: true, commitment: "ef".repeat(32) },
   ],
-  award: { winner: K1, winningCommitment: "ef".repeat(32), winningPrice: 15_000_000n, commitmentsCount: 1, revealsCount: 1 },
+  award: { winner: K1, winningCommitment: "ef".repeat(32), winningPrice: 15_000_000n, commitmentsCount: 1, revealsCount: 1, epoch: 106, byOverride: false },
   overrideProposals: [],
   overrideRecord: null,
   deliverySigners: [K1, K2],

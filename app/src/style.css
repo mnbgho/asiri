@@ -171,9 +171,10 @@ select:focus-visible, textarea:focus-visible {
   display: flex; align-items: center; gap: 14px; background: var(--white);
   border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;
   margin-bottom: 10px; transition: 0.15s; text-align: left; width: 100%;
-  font-size: 14px; color: var(--void);
+  font-size: 14px; color: var(--void); flex-wrap: wrap; min-width: 0;
 }
 .frow:hover { border-color: var(--blue); }
+.frow > span { min-width: 0; overflow-wrap: anywhere; }
 .frow .av {
   width: 32px; height: 32px; border-radius: 50%; background: var(--tint);
   color: var(--blue); display: grid; place-items: center;
@@ -181,7 +182,7 @@ select:focus-visible, textarea:focus-visible {
 }
 .frow .av.black { background: var(--void); color: var(--white); }
 .frow .rp { color: var(--mut1); }
-.frow .tm { margin-left: auto; color: var(--mut2); font-size: 12px; text-align: right; flex: none; }
+.frow .tm { margin-left: auto; color: var(--mut2); font-size: 12px; text-align: right; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .frow .tm b { display: block; color: var(--void); font-size: 14px; font-weight: 500; }
 /* the letter grid */
 .letters {
@@ -338,9 +339,26 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
   border: 0; background: transparent; text-align: left; padding: 10px 12px;
   border-radius: 6px; font-size: 14px; color: var(--mut1);
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  position: relative;
 }
 .snav .nav-label { font-weight: 500; }
-.snav .nav-help { font-size: 11.5px; line-height: 1.4; }
+/* Each link's plain helper line rides as a tooltip beside the
+   sidebar, shown on hover and on keyboard focus, so the nav
+   stays a clean list of links until a visitor asks what one
+   of them is for. */
+.snav .nav-help {
+  position: absolute; left: calc(100% + 12px); top: 50%; z-index: 60;
+  width: 232px; padding: 10px 12px;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  color: var(--mut1); font-size: 12px; line-height: 1.45;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(-50%) translateX(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+.snav button:hover .nav-help, .snav button:focus-visible .nav-help {
+  opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0);
+}
 .snav button:hover { color: var(--void); }
 .snav button.on { background: var(--white); color: var(--void); border: 1px solid var(--border); }
 .snav .cnt {
@@ -356,8 +374,49 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
   font-size: 13px; padding: 3px 0;
 }
 .wallet-card .row span { color: var(--mut1); }
-.main { padding: 28px 32px 64px; max-width: 1060px; width: 100%; margin: 0 auto; }
-.main-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+/* connected wallet card: one left edge, top to bottom.
+   labels sit above their values, never beside them, so a
+   long address or key is one truncated mono line, never a
+   wrapped row. same palette, no new colours. */
+.wn-head { display: flex; align-items: center; gap: 8px; }
+.wn-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--blue);
+  box-shadow: 0 0 0 4px var(--tint); flex: none;
+}
+.wn-status { font-size: 13px; font-weight: 500; }
+.wn-head .pill { margin-left: auto; }
+.wn-warn {
+  background: var(--tint); color: var(--blue); border-radius: 6px;
+  padding: 8px 10px; font-size: 12px; line-height: 1.5; margin-top: 12px;
+}
+.wn-div { height: 1px; background: var(--border); margin: 13px 0; }
+.wn-label {
+  font-size: 11px; color: var(--mut2); letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.wn-balance { font-size: 26px; font-weight: 500; line-height: 1.15; margin-top: 3px; }
+.wn-balance span { font-size: 14px; color: var(--mut1); font-weight: 400; }
+.wn-field { margin-bottom: 12px; }
+.wn-field:last-of-type { margin-bottom: 0; }
+.wn-value-row { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+.wn-value {
+  font-family: var(--mono); font-size: 12px; flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wn-copy {
+  flex: none; border: 1px solid var(--border); background: var(--white);
+  border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 500;
+}
+.wn-copy:hover { border-color: var(--blue); color: var(--blue); }
+.wn-note { font-size: 11px; color: var(--mut2); line-height: 1.5; margin-top: 10px; }
+.wn-disconnect {
+  width: 100%; margin-top: 14px; padding: 9px 16px; border-radius: 6px;
+  border: 1px solid var(--void); background: var(--white);
+  font-size: 13px; font-weight: 500;
+}
+.wn-disconnect:hover { background: var(--void); color: var(--white); }
+.main { padding: 28px 32px 64px; max-width: 1060px; width: 100%; margin: 0 auto; min-width: 0; }
+.main-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
 .main-head h1, .main-head h2 { font-size: 30px; }
 .main-head .spacer { flex: 1; }
 .screen-purpose {
@@ -365,36 +424,44 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
   max-width: 760px; margin: -8px 0 22px;
 }
 
-/* content boxes */
-.box { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
+/* content boxes. min-width: 0 lets a box shrink inside the
+   grid and flex parents instead of forcing the page wider
+   than the phone when a long address or hash sits inside. */
+.box { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; min-width: 0; }
 .box-h {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 14px 18px; border-bottom: 1px solid var(--border);
 }
 .box-h h2, .box-h h3 { font-size: 15px; }
 .box-h .spacer { flex: 1; }
-.box-b { padding: 16px 18px; }
-.kv { display: flex; gap: 14px; padding: 7px 0; font-size: 14px; align-items: baseline; }
+.box-b { padding: 16px 18px; min-width: 0; }
+.kv { display: flex; gap: 14px; padding: 7px 0; font-size: 14px; align-items: baseline; min-width: 0; }
 .kv .k { color: var(--mut1); width: 190px; flex: none; }
-.kv .v { font-weight: 500; }
+.kv .v { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .kv .v.plain { font-weight: 400; }
-.hash { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+.hash { font-family: var(--mono); font-size: 12px; word-break: break-all; overflow-wrap: anywhere; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .trow {
   display: flex; align-items: center; gap: 14px; padding: 13px 18px;
   border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer;
   background: var(--white); width: 100%; text-align: left; border-top: 0;
-  border-left: 0; border-right: 0; color: var(--void);
+  border-left: 0; border-right: 0; color: var(--void); flex-wrap: wrap; min-width: 0;
 }
 .trow:last-child { border-bottom: 0; }
 .trow:hover { background: var(--cream); }
-.trow .tm { margin-left: auto; color: var(--mut2); font-size: 12px; text-align: right; flex: none; }
+/* The row's name and its figure can wrap: the name takes
+   what it needs and the figure shrinks to what is left, so
+   a long circle name never pushes the row wider than the
+   phone. */
+.trow > span { min-width: 0; overflow-wrap: anywhere; }
+.trow .tm { margin-left: auto; color: var(--mut2); font-size: 12px; text-align: right; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .trow .tm b { display: block; color: var(--void); font-size: 14px; font-weight: 500; }
 .commit-row {
   display: flex; gap: 12px; align-items: baseline; padding: 9px 0;
-  border-bottom: 1px solid var(--border); font-size: 13px;
+  border-bottom: 1px solid var(--border); font-size: 13px; flex-wrap: wrap; min-width: 0;
 }
 .commit-row:last-child { border-bottom: 0; }
+.commit-row > * { min-width: 0; }
 .commit-row .who { font-family: var(--mono); font-size: 11px; color: var(--mut1); }
 .commit-row .spacer { flex: 1; }
 
@@ -410,23 +477,37 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: 2px solid var(--blue); outline-offset: 0; border-color: var(--blue);
 }
+/* the open-by-address input sits in a row beside its button, outside a
+   .field wrapper, so it carries the field metrics itself */
+.srow input.addr {
+  flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--white); color: var(--void);
+}
+.srow input.addr:focus {
+  outline: 2px solid var(--blue); outline-offset: 0; border-color: var(--blue);
+}
 .field .mono { font-family: var(--mono); font-size: 12px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .notice {
   background: var(--tint); border-radius: 8px; padding: 14px 16px;
-  font-size: 13px; line-height: 1.55; margin-bottom: 14px;
+  font-size: 13px; line-height: 1.55; margin-bottom: 14px; overflow-wrap: anywhere;
 }
 .notice b { font-weight: 500; }
 .warn {
   background: var(--white); border: 1px solid var(--void); border-radius: 8px;
-  padding: 14px 16px; font-size: 13px; line-height: 1.55; margin-bottom: 14px;
+  padding: 14px 16px; font-size: 13px; line-height: 1.55; margin-bottom: 14px; overflow-wrap: anywhere;
 }
 .err {
   background: var(--white); border: 1px solid var(--blue); color: var(--blue);
-  border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 14px;
+  border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 14px; overflow-wrap: anywhere;
 }
-.check-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; align-items: baseline; }
+.check-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; align-items: baseline; min-width: 0; }
 .check-row:last-child { border-bottom: 0; }
+/* The check text carries long hashes in its detail line, so
+   it must be allowed to shrink and wrap instead of holding
+   the row at its full unbroken width. */
+.check-row > div { min-width: 0; overflow-wrap: anywhere; }
 .check-row .tick {
   flex: none; width: 22px; height: 22px; border-radius: 50%;
   display: grid; place-items: center; font-size: 12px; font-weight: 500;
@@ -435,13 +516,112 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
 .check-row.fail .tick { background: var(--void); color: var(--white); }
 .check-row.unknown .tick { background: var(--white); color: var(--mut1); border: 1px solid var(--mut3); }
 .check-row .detail { color: var(--mut1); font-size: 13px; }
+/* A detail line can carry a bare 64-hex hash, as the receipt
+   sha256 does: without a break rule the hash holds its whole
+   width and stretches the page sideways on a phone. */
+.detail { overflow-wrap: anywhere; }
 .empty { padding: 34px 18px; text-align: center; color: var(--mut1); font-size: 14px; line-height: 1.6; }
-.srow { display: flex; gap: 10px; align-items: center; }
+.srow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* The run-it-yourself command: one scrolling line, never
+   broken mid-word. A long address inside it scrolls
+   sideways in place instead of splitting "--network"
+   across two lines. */
+.cmdline {
+  font-size: 13px; color: var(--mut1); overflow-x: auto;
+  white-space: nowrap; padding: 8px 0; scrollbar-width: thin;
+}
+.cmdline code { font-family: var(--mono); font-size: 12px; color: var(--void); }
 .mt { margin-top: 14px; }
-.small { font-size: 12px; color: var(--mut2); }
+.small { font-size: 12px; color: var(--mut2); overflow-wrap: anywhere; }
+/* the hamburger: a round white button with three blue
+   lines that fold into an X when the menu opens. it is the
+   one control that opens the mobile menu, on the landing
+   page and inside the app. */
+.burger {
+  width: 44px; height: 44px; border-radius: 50%; flex: none;
+  background: var(--white); border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; padding: 0; transition: 0.15s;
+}
+.burger:hover { border-color: var(--blue); box-shadow: 0 2px 8px rgba(0, 0, 255, 0.15); }
+.burger span {
+  display: block; width: 18px; height: 2px; border-radius: 2px;
+  background: var(--blue); transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.menu-open .burger span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.menu-open .burger span:nth-child(2) { opacity: 0; }
+.menu-open .burger span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* the mobile menus, landing and app, share one shape: a
+   white card that drops below the header, links as full
+   width rows, the primary action as a full width button.
+   on desktop the wrappers vanish (display: contents) so
+   their children lay out exactly as before. */
+.lp-logo, .lp-burger, .side-top { display: none; }
+.lp-menu, .side-menu { display: contents; }
+
+/* the wallet gate: acting needs a wallet, reading never
+   does. the modal says so and offers the connection. */
+.wallet-modal-overlay {
+  position: fixed; inset: 0; z-index: 200; padding: 20px;
+  background: rgba(0, 0, 0, 0.45); display: grid; place-items: center;
+}
+.wallet-modal {
+  background: var(--white); border-radius: 12px; padding: 24px;
+  max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+.wallet-modal h2 { font-size: 20px; margin-bottom: 8px; }
+.wallet-modal p { font-size: 14px; color: var(--mut1); line-height: 1.6; }
+.wallet-modal-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.wallet-modal-actions .btn { flex: 1; justify-content: center; white-space: nowrap; }
+
+/* a transaction group: one event type, its rows folded
+   behind a summary that names the type and the count, so
+   thirty near-identical rows read as one line until opened. */
+.tx-group { border-bottom: 1px solid var(--border); padding: 9px 0; }
+.tx-group:last-child { border-bottom: 0; }
+.tx-group summary {
+  cursor: pointer; font-size: 13px; font-weight: 500;
+  list-style: none; display: flex; gap: 8px; align-items: center;
+}
+.tx-group summary::-webkit-details-marker { display: none; }
+.tx-group summary::before { content: "+"; color: var(--blue); font-size: 16px; line-height: 1; }
+.tx-group[open ] summary::before { content: "−"; }
+.tx-group summary .cnt { color: var(--mut2); font-weight: 400; font-size: 12px; }
+
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
-  .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  /* The app header on a phone: the sidebar becomes a sticky
+     top bar, ASIRI on the left and the hamburger on the right,
+     and the network switch, the nav and the wallet card drop
+     down from it as one panel. */
+  .side {
+    position: sticky; top: 0; z-index: 100; height: auto;
+    border-right: 0; border-bottom: 1px solid var(--border);
+    padding: 12px 16px; gap: 0;
+  }
+  .side .logo { display: none; }
+  .side-top {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .side-menu { display: none; }
+  .side.menu-open .side-menu {
+    display: flex; flex-direction: column; gap: 20px;
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--cream); border-bottom: 1px solid var(--border);
+    padding: 16px; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    max-height: calc(100dvh - 68px); overflow-y: auto;
+  }
+  /* On a narrow screen the sidebar runs across the top, so the
+     nav tooltip drops below its link instead of beside it. */
+  .snav .nav-help {
+    left: 0; top: calc(100% + 6px); width: min(232px, 78vw);
+    transform: translateY(-4px);
+  }
+  .snav button:hover .nav-help, .snav button:focus-visible .nav-help {
+    transform: translateY(0);
+  }
   .grid2, .form-grid { grid-template-columns: 1fr; }
   .hero { padding: 64px 20px 48px; }
   .hero h1 { font-size: 30px; }
@@ -451,7 +631,46 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
   .lcell .cap { margin-top: 12px; }
   .riglab, .faq, .foot-grid { grid-template-columns: 1fr; }
   .seal-chip { display: none; }
-  .lp-nav { grid-template-columns: 1fr auto; }
-  .lp-nav .pillbar { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
-  .kv .k { width: 130px; }
+  /* The landing nav on a phone: ASIRI on the left, the
+     hamburger on the right, and everything else inside the
+     menu panel that drops below the bar. */
+  .lp-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; position: relative;
+  }
+  .lp-logo {
+    display: block; font-size: 18px; font-weight: 600;
+    letter-spacing: 0.08em; color: var(--void);
+  }
+  .lp-burger { display: flex; }
+  .lp-menu { display: none; }
+  .lp-nav.menu-open .lp-menu {
+    display: flex; flex-direction: column; gap: 8px;
+    position: absolute; top: calc(100% + 8px); left: 16px; right: 16px;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12); z-index: 100;
+  }
+  .lp-nav.menu-open .pillbar {
+    flex-direction: column; align-items: stretch; gap: 2px;
+    background: transparent; border: 0; box-shadow: none; padding: 0;
+  }
+  .lp-nav.menu-open .pillbar a {
+    padding: 12px 10px; font-size: 15px; border-radius: 8px;
+  }
+  .lp-nav.menu-open .pillbar a:hover { background: var(--cream); }
+  .lp-nav.menu-open .signin { justify-content: center; width: 100%; padding: 12px 16px; }
+  /* Key-value rows stack on a phone: the label sits above
+     its value, so a long address gets the full width. */
+  .kv { flex-direction: column; gap: 2px; }
+  .kv .k { width: auto; }
+  /* A tender row's figure drops to its own line, left
+     aligned, instead of squeezing beside the name. */
+  .trow .tm, .frow .tm { margin-left: 0; flex-basis: 100%; text-align: left; }
+  .trow .tm b, .frow .tm b { display: inline; margin-right: 6px; }
+  /* The screen title takes its own line, with the network
+     pill and the new tender button below it. */
+  .main { padding: 20px 16px 48px; }
+  .main-head h1, .main-head h2 { font-size: 24px; flex-basis: 100%; }
+  .foot-cols { grid-template-columns: 1fr; gap: 8px; }
 }

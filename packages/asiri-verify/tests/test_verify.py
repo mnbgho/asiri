@@ -16,7 +16,7 @@ import base64
 import hashlib
 import sys
 
-import verify as V
+from asiri_verify import verify as V
 
 # ------------------------------------------------------------ encoder
 # Minimal CBOR encoder, only what the fixtures need.
@@ -169,7 +169,7 @@ def tender_state(over=None):
         reveal(IDENT_B, 1950, 1, COMMIT_B),
     ]
     state[19] = 2
-    state[20] = [bytes.fromhex(IDENT_B), bytes.fromhex(COMMIT_B), 1950, 3, 2]
+    state[20] = [bytes.fromhex(IDENT_B), bytes.fromhex(COMMIT_B), 1950, 3, 2, 25, False]
     state[21] = []
     state[22] = None
     state[23] = [bytes.fromhex(APPROVER1), bytes.fromhex(APPROVER2)]
@@ -264,9 +264,175 @@ def test_wrong_code_hash_fails():
     assert row and not row[0]["ok"]
 
 
+def test_unreadable_template_substate_reports_could_not_read():
+    patched_network()
+    import urllib.error
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == TEMPLATE:
+            raise urllib.error.URLError("truncated read")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = [r for r in rep.rows if r["check"] == "template code hash"]
+    assert row and row[0]["ok"] is None
+    assert not rep.failed, rep.failed
+
+
+def test_unreadable_escrow_vault_reports_could_not_read():
+    patched_network()
+    import urllib.error
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == ESCROW:
+            raise urllib.error.URLError("truncated read")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = [r for r in rep.rows if r["check"] == "escrow funding"]
+    assert row and row[0]["ok"] is None
+    assert not rep.failed, rep.failed
+
+
+def test_root_fetch_transport_reports_could_not_read():
+    # A tender whose record cannot be fetched at all still gets a
+    # report, never a crash.
+    patched_network()
+    import urllib.error
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == TENDER:
+            raise urllib.error.URLError("connection reset")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    assert len(rep.rows) == 1, rep.rows
+    row = rep.rows[0]
+    assert row["check"] == "tender exists" and row["ok"] is None
+    assert not rep.failed, rep.failed
+    assert rep.unknown, rep.rows
+
+
+def test_root_fetch_decode_error_fails():
+    # Bytes that arrived but cannot be decoded are a failure of
+    # the record, not an unreadable read.
+    patched_network()
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == TENDER:
+            raise ValueError("bad cbor in tender substate")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    assert len(rep.rows) == 1, rep.rows
+    row = rep.rows[0]
+    assert row["check"] == "tender exists" and row["ok"] is False
+
+
+def test_malformed_tender_record_fails():
+    # The template matches, but the state does not decode: the
+    # tender record itself is invalid.
+    patched_network()
+    substates = {TENDER: component("ee" * 32, [None] * 12)}
+    rep = V.verify(TENDER, "esmeralda", source=FakeSource(substates))
+    assert len(rep.rows) == 1, rep.rows
+    row = rep.rows[0]
+    assert row["check"] == "tender exists" and row["ok"] is False
+    assert "unreadable" in row["detail"], row
+
+
+def test_template_decode_error_fails():
+    patched_network()
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == TEMPLATE:
+            raise ValueError("bad cbor in template substate")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = [r for r in rep.rows if r["check"] == "template code hash"]
+    assert row and row[0]["ok"] is False
+
+
+def test_escrow_decode_error_fails():
+    patched_network()
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == ESCROW:
+            raise ValueError("bad cbor in escrow vault")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = [r for r in rep.rows if r["check"] == "escrow funding"]
+    assert row and row[0]["ok"] is False
+
+
+def test_bond_vault_transport_reports_could_not_read():
+    patched_network()
+    import urllib.error
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == BONDS:
+            raise urllib.error.URLError("timed out")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = [r for r in rep.rows if r["check"] == "bond vault reconciles"]
+    assert row and row[0]["ok"] is None
+    assert not rep.failed, rep.failed
+
+
+def test_bond_vault_decode_error_fails():
+    patched_network()
+    source = settled_source()
+    real_substate = source.substate
+
+    def flaky(substate_id, large=False):
+        if substate_id == BONDS:
+            raise ValueError("bad cbor in bond vault")
+        return real_substate(substate_id, large=large)
+
+    source.substate = flaky
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = [r for r in rep.rows if r["check"] == "bond vault reconciles"]
+    assert row and row[0]["ok"] is False
+    assert BONDS in row[0]["detail"], row
+
+
+def test_bond_vault_without_balance_fails():
+    patched_network()
+    source = settled_source()
+    source._substates[BONDS] = [1, 2]
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = [r for r in rep.rows if r["check"] == "bond vault reconciles"]
+    assert row and row[0]["ok"] is False
+    assert "no balance" in row[0]["detail"], row
+
+
 def test_wrong_award_fails():
     patched_network()
-    bad_award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_A), 2140, 3, 2]
+    bad_award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_A), 2140, 3, 2, 25, False]
     rep = V.verify(TENDER, "esmeralda",
                    source=settled_source({20: bad_award}))
     row = [r for r in rep.rows
@@ -302,7 +468,7 @@ def override_source():
                 [bytes.fromhex(APPROVER1), bytes.fromhex(APPROVER2)],
                 True, False]
     record = [bytes.fromhex(IDENT_A), bytes.fromhex(digest), 21]
-    award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_A), 2140, 3, 2]
+    award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_A), 2140, 3, 2, 25, True]
     settlement = [bytes.fromhex(IDENT_A), 2140, 25]
     state = tender_state({
         20: award, 21: [proposal], 22: record, 26: settlement, 27: 7860,
@@ -407,7 +573,7 @@ def test_revealed_flag_mismatch_fails_record_counts():
 
 def test_wrong_winner_fails():
     patched_network()
-    bad_award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_B), 1950, 3, 2]
+    bad_award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_B), 1950, 3, 2, 25, False]
     rep = V.verify(TENDER, "esmeralda",
                    source=settled_source({20: bad_award}))
     row = [r for r in rep.rows
@@ -431,7 +597,7 @@ def test_override_chosen_mismatch_fails():
                 [bytes.fromhex(APPROVER1), bytes.fromhex(APPROVER2)],
                 True, False]
     record = [bytes.fromhex(IDENT_B), bytes.fromhex(digest), 21]
-    award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_A), 2140, 3, 2]
+    award = [bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_A), 2140, 3, 2, 25, True]
     settlement = [bytes.fromhex(IDENT_A), 2140, 25]
     state = tender_state({
         20: award, 21: [proposal], 22: record, 26: settlement, 27: 7860,
@@ -529,6 +695,7 @@ class _StubResponse:
         import json as _json
 
         self._body = _json.dumps(payload).encode()
+        self._length = len(self._body)
 
     def __enter__(self):
         return self
@@ -536,8 +703,19 @@ class _StubResponse:
     def __exit__(self, *args):
         return False
 
-    def read(self):
-        return self._body
+    def info(self):
+        return {"Content-Length": str(self._length)}
+
+    def read(self, size=-1):
+        if size is None or size < 0:
+            out, self._body = self._body, b""
+            return out
+        out, self._body = self._body[:size], self._body[size:]
+        return out
+
+    def read1(self, size=-1):
+        # The stub holds the whole body, so read1 and read agree.
+        return self.read(size)
 
 
 def _stub_urlopen(calls, behaviour):
@@ -659,6 +837,143 @@ def test_small_substate_falls_back_to_second_indexer():
     assert all(c[1] == 30 for c in calls)
 
 
+def test_substate_data_error_rescued_by_fallback():
+    # A data error on the primary must not stop failover: the
+    # fallback may serve good bytes for the same substate.
+    calls = []
+
+    def behaviour(url):
+        if url.startswith("https://primary.example"):
+            return ValueError("bad cbor")
+        return _up_body(7)
+
+    idx = V.Indexer("https://primary.example", "https://fallback.example")
+    result = _with_urlopen(calls, behaviour, lambda: idx.substate("component_x"))
+    assert result == 7
+    assert len(calls) == 2
+
+
+def test_substate_data_error_survives_all_attempts():
+    # When every indexer serves bytes that cannot be decoded, the
+    # surviving error is the data error, never a transport error:
+    # callers must report it as a failure, not as unreadable.
+    calls = []
+
+    def behaviour(url):
+        return ValueError("bad cbor")
+
+    idx = V.Indexer("https://primary.example", "https://fallback.example")
+    try:
+        _with_urlopen(calls, behaviour, lambda: idx.substate("component_x"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("the data error should have raised")
+    assert len(calls) == 3
+
+
+def test_transaction_data_error_survives_all_attempts():
+    calls = []
+
+    def behaviour(url):
+        return ValueError("malformed json")
+
+    idx = V.Indexer("https://primary.example", "https://fallback.example")
+    try:
+        _with_urlopen(calls, behaviour, lambda: idx.transaction("tx1"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("the data error should have raised")
+    assert len(calls) == 3
+
+
+def test_truncated_body_reports_transport_error():
+    # A body that ends short of its declared length is a
+    # transport failure, not invalid data: read1 returns the
+    # partial bytes without raising, so the length check must
+    # catch it before the JSON decoder sees a cut body.
+    import urllib.request
+
+    class Truncated:
+        def __init__(self):
+            self._body = b'{"state": {"up": {"substate": "abc'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read1(self, size=-1):
+            out, self._body = self._body, b""
+            return out
+
+        def info(self):
+            return {"Content-Length": "100000"}
+
+    def fake(req, timeout=None):
+        return Truncated()
+
+    original = urllib.request.urlopen
+    urllib.request.urlopen = fake
+    try:
+        idx = V.Indexer("https://primary.example")
+        try:
+            idx.get("/substates/x", timeout=30)
+        except V.TransportError:
+            pass
+        else:
+            raise AssertionError("the truncated body should have raised")
+    finally:
+        urllib.request.urlopen = original
+
+
+def test_read_deadline_bounds_a_dribbling_response():
+    # A peer that sends a byte every half second never trips the
+    # socket timeout, but the read must still end at the deadline.
+    import http.server
+    import threading
+    import time
+
+    class Dribble(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", "100000")
+                self.end_headers()
+                for _ in range(20):
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+                    time.sleep(0.5)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Dribble)
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        port = server.server_address[1]
+        idx = V.Indexer(f"http://127.0.0.1:{port}")
+        start = time.monotonic()
+        try:
+            idx.get("/x", timeout=2)
+        except V.TransportError:
+            pass
+        else:
+            raise AssertionError("the dribbling read should have timed out")
+        elapsed = time.monotonic() - start
+        assert elapsed < 6, elapsed
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def _reveals_row(rep):
     rows = [r for r in rep.rows
             if r["check"] == "reveals verify against commitments"]
@@ -687,6 +1002,24 @@ def test_unreadable_reveal_transactions_report_could_not_read():
     assert "could not be read" in row["detail"], row
     assert row not in rep.failed
     assert row in rep.unknown
+
+
+def test_event_list_failure_reports_reveals_could_not_read():
+    # The event list itself cannot be read, so no history was
+    # read at all. The reveals are could-not-read, never missing,
+    # and verify() returns a report instead of crashing.
+    patched_network()
+
+    class NoEventsSource(FakeSource):
+        def events(self, substate_id):
+            raise RuntimeError("event list timed out")
+
+    base = settled_source()
+    source = NoEventsSource(base._substates, base._txs)
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = _reveals_row(rep)
+    assert row["ok"] is None, row
+    assert not rep.failed, rep.failed
 
 
 def test_partly_unreadable_reveals_report_could_not_read():
@@ -764,6 +1097,86 @@ def test_missing_rationale_file_is_a_clean_error():
     rc = V.main([TENDER, "--network", "esmeralda",
                  "--rationale", "/nonexistent-rationale.txt"])
     assert rc == 1
+
+
+def test_reveal_history_serves_plain_check_run():
+    # A history file must serve the ordinary check run, not only
+    # a receipt: with the indexer bodies lost and the wallet
+    # history holding them, the reveals recompute and pass.
+    import contextlib
+    import io
+    import json
+    import tempfile
+    patched_network()
+    base = settled_source()
+
+    class RaisingSource(FakeSource):
+        def transaction(self, tx_id):
+            raise RuntimeError("HTTP Error 404: Not Found")
+
+    source = RaisingSource(base._substates, base._txs)
+    original = V.Indexer
+    V.Indexer = lambda *args, **kwargs: source
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = tmp + "/history.json"
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(_wallet_records(), fh)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = V.main([TENDER, "--network", "esmeralda",
+                             "--reveal-history", path])
+    finally:
+        V.Indexer = original
+    assert rc == 0, buf.getvalue()
+    out = buf.getvalue()
+    assert "preserved history" in out, out
+    assert "[PASS] reveals verify against commitments" in out, out
+
+
+def test_reveal_history_json_names_the_file():
+    import contextlib
+    import io
+    import json
+    import tempfile
+    patched_network()
+    base = settled_source()
+
+    class RaisingSource(FakeSource):
+        def transaction(self, tx_id):
+            raise RuntimeError("HTTP Error 404: Not Found")
+
+    source = RaisingSource(base._substates, base._txs)
+    original = V.Indexer
+    V.Indexer = lambda *args, **kwargs: source
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = tmp + "/history.json"
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(_wallet_records(), fh)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = V.main([TENDER, "--network", "esmeralda",
+                             "--reveal-history", path, "--json"])
+    finally:
+        V.Indexer = original
+    assert rc == 0, buf.getvalue()
+    out = json.loads(buf.getvalue())
+    assert out["reveal_history"] == path
+    assert out["ok"] is True
+
+
+def test_reveal_history_missing_file_is_a_clean_error():
+    # A history path that does not exist fails fast with one
+    # clear line, in the plain run as well as in a receipt run.
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = V.main([TENDER, "--network", "esmeralda",
+                     "--reveal-history", "/nonexistent-history.json"])
+    assert rc == 1
+    assert "could not read the reveal history" in buf.getvalue()
 
 
 # ------------------------------------------------------------ receipts
@@ -923,6 +1336,261 @@ def test_receipt_override_exception():
     passed = receipt["exclusion"]["passed_over_revealed_bids"]
     assert len(passed) == 1 and passed[0]["seller"] == IDENT_B
     assert "override" in passed[0]["passed_over_by"]
+
+
+def test_award_requires_seven_fields():
+    # The on-chain award carries epoch and by_override behind the
+    # five fields the checks use (measured live on the mainnet gate
+    # tender, 2026-11-25). A five-field award, or an eight-field
+    # one, is a malformed record, not a shorter form.
+    for bad in (
+        [bytes.fromhex(IDENT_B), bytes.fromhex(COMMIT_B), 1950, 3, 2],
+        [bytes.fromhex(IDENT_B), bytes.fromhex(COMMIT_B), 1950, 3, 2, 25, False, 99],
+    ):
+        state = tender_state({20: bad})
+        try:
+            V.decode_tender(component("ee" * 32, state))
+        except ValueError:
+            continue
+        raise AssertionError(f"award with {len(bad)} fields decoded")
+
+
+def test_award_decodes_epoch_and_by_override():
+    t = V.decode_tender(component("ee" * 32, tender_state()))
+    assert t["award"]["epoch"] == 25
+    assert t["award"]["by_override"] is False
+
+
+def test_state_enum_rejects_bool():
+    # bool is an int subclass, so a True state index would read as
+    # index 1 without the explicit check.
+    state = tender_state({6: [True, []]})
+    try:
+        V.decode_tender(component("ee" * 32, state))
+    except ValueError:
+        return
+    raise AssertionError("bool state index decoded")
+
+
+def test_dispute_resolved_flag_must_be_bool():
+    state = tender_state({
+        6: [7, []],
+        24: [bytes.fromhex("ef" * 32), 30, 33, 1, bytes.fromhex("ab" * 32)],
+    })
+    try:
+        V.decode_tender(component("ee" * 32, state))
+    except ValueError:
+        return
+    raise AssertionError("non-bool resolved flag decoded")
+
+
+def test_trailing_fields_fail_on_subrecords():
+    cases = {
+        17: [[bytes.fromhex(IDENT_A), bytes.fromhex(COMMIT_A), 10,
+              True, [2, []], 99]],
+        18: [[bytes.fromhex(IDENT_A), 2140, 12, 0, True,
+              bytes.fromhex(COMMIT_A), 99]],
+        21: [[1, bytes.fromhex(IDENT_A), bytes.fromhex("ab" * 32),
+              [], True, False, 99]],
+        22: [bytes.fromhex(IDENT_A), bytes.fromhex("ab" * 32), 21, 99],
+        25: [[bytes.fromhex(APPROVER1), True, bytes.fromhex("ab" * 32), 99]],
+        26: [bytes.fromhex(IDENT_A), 1950, 25, 99],
+    }
+    for field, bad in cases.items():
+        state = tender_state({field: bad})
+        try:
+            V.decode_tender(component("ee" * 32, state))
+        except ValueError:
+            continue
+        raise AssertionError(
+            f"field {field} with trailing fields decoded")
+
+
+def test_indexer_events_rejects_malformed_shapes():
+    idx = V.Indexer("https://example.invalid")
+    for bad in ({"events": "not a list"}, {"events": 42}, "nope", 42):
+        idx._get_json = lambda path, bad=bad: bad
+        try:
+            idx.events("component_" + "bb" * 32)
+        except V.MalformedHistory as exc:
+            assert exc.stage == "events"
+            continue
+        raise AssertionError(f"malformed event list {bad!r} accepted")
+
+
+def test_indexer_events_empty_object_reads_empty():
+    idx = V.Indexer("https://example.invalid")
+    idx._get_json = lambda path: {}
+    assert idx.events("component_" + "bb" * 32) == []
+
+
+def test_event_tx_ids_rejects_malformed_entries():
+    class BadSource:
+        def __init__(self, events):
+            self._events = events
+
+        def events(self, substate_id):
+            return self._events
+
+    for bad in ([42], [[]], [[""]], [[123, "x"]], [{"nope": 1}],
+                [{"transaction_id": ""}], [{"transaction_id": 42}],
+                ["tx-1", 42]):
+        try:
+            V._event_tx_ids(BadSource(bad), TENDER)
+        except V.MalformedHistory as exc:
+            assert exc.stage == "events"
+            continue
+        raise AssertionError(f"malformed entry {bad!r} accepted")
+    good = V._event_tx_ids(
+        BadSource([["tx-1", "payload"], {"transaction_id": "tx-2"}]),
+        TENDER)
+    assert good == ["tx-1", "tx-2"]
+
+
+def test_malformed_event_list_fails_the_reveals_check():
+    # Bytes arrived for the event list, but they are not a list:
+    # the reveals check fails, it must not report could-not-read.
+    patched_network()
+
+    class BadEventsSource(FakeSource):
+        def events(self, substate_id):
+            return {"events": "not a list"}
+
+    base = settled_source()
+    source = BadEventsSource(base._substates, base._txs)
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = _reveals_row(rep)
+    assert row["ok"] is False, row
+    assert "malformed" in row["detail"], row
+    assert not rep.unknown, rep.unknown
+
+
+def test_malformed_transaction_body_fails_the_reveals_check():
+    patched_network()
+
+    class BadTxSource(FakeSource):
+        def transaction(self, tx_id):
+            raise ValueError("Expecting value: line 1 column 1 (char 0)")
+
+    base = settled_source()
+    source = BadTxSource(base._substates, base._txs)
+    rep = V.verify(TENDER, "esmeralda", source=source)
+    row = _reveals_row(rep)
+    assert row["ok"] is False, row
+    assert "malformed" in row["detail"], row
+
+
+def test_base64_with_stray_characters_is_invalid():
+    idx = V.Indexer("https://example.invalid")
+    idx.get = lambda path, timeout=30, base=None: {
+        "state": {"up": {"substate": "!!!!not-base64!!!!"}}
+    }
+    try:
+        idx._substate("https://example.invalid",
+                      "component_" + "bb" * 32, 30)
+    except ValueError:
+        return
+    raise AssertionError("invalid base64 decoded")
+
+
+def test_receipt_vault_unreadable_reconciles_null():
+    # An escrow vault the indexer would not serve cannot
+    # reconcile: the receipt says null, not false.
+    patched_network()
+
+    class NoVaultSource(FakeSource):
+        def substate(self, substate_id, large=False):
+            if substate_id == ESCROW:
+                raise V.TransportError("the read operation timed out")
+            return super().substate(substate_id, large=large)
+
+    base = settled_source()
+    source = NoVaultSource(base._substates, base._txs)
+    receipt = V.build_receipt(TENDER, "esmeralda", source=source)
+    escrow = receipt["escrow"]
+    assert escrow["balance_microtari"] is None
+    assert escrow["reconciles"] is None, escrow
+    assert escrow["read_status"] == "could-not-read", escrow
+    assert receipt["bonds"]["read_status"] == "read"
+
+
+def test_receipt_vault_invalid_reconciles_null():
+    # Bytes arrived for the escrow vault but do not decode to a
+    # balance: the receipt names the record invalid, not unreadable.
+    patched_network()
+
+    class BadVaultSource(FakeSource):
+        def substate(self, substate_id, large=False):
+            if substate_id == ESCROW:
+                return [1, 2]
+            return super().substate(substate_id, large=large)
+
+    base = settled_source()
+    source = BadVaultSource(base._substates, base._txs)
+    receipt = V.build_receipt(TENDER, "esmeralda", source=source)
+    escrow = receipt["escrow"]
+    assert escrow["balance_microtari"] is None
+    assert escrow["reconciles"] is None, escrow
+    assert escrow["read_status"] == "record-invalid", escrow
+
+
+def test_receipt_malformed_events_fails_reveals():
+    patched_network()
+
+    class BadEventsSource(FakeSource):
+        def events(self, substate_id):
+            return {"events": "not a list"}
+
+    base = settled_source()
+    source = BadEventsSource(base._substates, base._txs)
+    receipt = V.build_receipt(TENDER, "esmeralda", source=source)
+    assert receipt["checks_summary"]["fail"] == 1, receipt["checks_summary"]
+    for row in receipt["reveals"]:
+        rec = row["recomputation"]
+        assert rec["status"] == "failed", row
+        assert "not shaped like" in rec["provenance_note"], row
+    assert receipt["provenance"]["reveal_transactions"].startswith("failed")
+
+
+def test_receipt_pruning_note_only_for_esmeralda():
+    patched_network()
+    esme = V.build_receipt(TENDER, "esmeralda", source=settled_source())
+    assert esme["provenance"]["indexer_note"] is not None
+    assert "2026-11-20" in esme["provenance"]["indexer_note"]
+    assert "esmeralda" in esme["provenance"]["state_and_events"]
+    main = V.build_receipt(TENDER, "mainnet", source=settled_source())
+    assert main["provenance"]["indexer_note"] is None
+    assert "mainnet" in main["provenance"]["state_and_events"]
+    assert "esmeralda" not in main["provenance"]["state_and_events"]
+
+
+def test_receipt_record_error_kind():
+    # A root fetch that fails in transit is not evidence the
+    # record is invalid; bytes that arrive but do not decode are.
+    patched_network()
+
+    class NoTenderSource(FakeSource):
+        def substate(self, substate_id, large=False):
+            if substate_id == TENDER:
+                raise V.TransportError("the read operation timed out")
+            return super().substate(substate_id, large=large)
+
+    base = settled_source()
+    receipt = V.build_receipt(TENDER, "esmeralda",
+                              source=NoTenderSource(base._substates, base._txs))
+    assert receipt["record"] is None
+    assert receipt["record_error_kind"] == "could-not-read", receipt
+
+    class BadTenderSource(FakeSource):
+        def substate(self, substate_id, large=False):
+            if substate_id == TENDER:
+                return [1, 2]
+            return super().substate(substate_id, large=large)
+
+    receipt = V.build_receipt(TENDER, "esmeralda",
+                              source=BadTenderSource(base._substates, base._txs))
+    assert receipt["record"] is None
+    assert receipt["record_error_kind"] == "record-invalid", receipt
 
 
 if __name__ == "__main__":

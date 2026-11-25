@@ -12,7 +12,7 @@
 // the rig panel's answers quote the mainnet attack tender's
 // record: the chain's own rejections, with the transactions
 // that carry them.
-import { App, el, setAria } from "../app";
+import { App, cap, el, setAria } from "../app";
 import {
   MAINNET_ATTACK_OVERRIDE,
   MAINNET_ATTACK_RECORD,
@@ -193,8 +193,14 @@ export async function renderLanding(
   // Nav, three parts: the network pill on the left, the
   // centred link pill, the sign in pill on the right. The
   // network pill names the network the app is actually
-  // reading, from its own config.
+  // reading, from its own config. On a phone the nav is
+  // ASIRI on the left and a hamburger on the right, and the
+  // three parts drop down from it as one panel: the parts
+  // live inside .lp-menu, which vanishes (display: contents)
+  // on desktop so they lay out exactly as before.
   const nav = el("nav", "lp-nav");
+  const logo = el("a", "lp-logo", "ASIRI");
+  logo.href = "#/";
   const verpill = el("span", "verpill");
   verpill.append(
     el("span", "vdot"),
@@ -202,10 +208,10 @@ export async function renderLanding(
   );
   const links = el("div", "pillbar");
   for (const [label, hash] of [
-    ["tenders", "#feed"],
-    ["how it works", "#how"],
-    ["questions", "#faq"],
-    ["the proof", "#proof"],
+    ["Tenders", "#feed"],
+    ["How it works", "#how"],
+    ["Questions", "#faq"],
+    ["The proof", "#proof"],
   ] as const) {
     const a = el("a", undefined, label);
     a.href = hash;
@@ -219,7 +225,37 @@ export async function renderLanding(
     el("span", "wordmark", "asiri"),
   );
   signin.addEventListener("click", () => go("#/app/overview"));
-  nav.append(verpill, links, signin);
+  const menu = el("div", "lp-menu");
+  menu.append(verpill, links, signin);
+  const burger = el("button", "lp-burger burger");
+  setAria(burger, "aria-label", "open the menu");
+  setAria(burger, "aria-expanded", "false");
+  burger.append(el("span"), el("span"), el("span"));
+  const setMenuOpen = (open: boolean): void => {
+    // classList.toggle exists in a real browser; the unit
+    // test fake DOM implements add and contains only, so the
+    // class string is edited directly and works in both.
+    const parts = nav.className.split(/\s+/).filter(Boolean);
+    const has = parts.includes("menu-open");
+    if (open && !has) nav.className = [...parts, "menu-open"].join(" ");
+    if (!open && has)
+      nav.className = parts.filter((c) => c !== "menu-open").join(" ");
+    setAria(burger, "aria-expanded", open ? "true" : "false");
+    setAria(burger, "aria-label", open ? "close the menu" : "open the menu");
+  };
+  burger.addEventListener("click", () => {
+    setMenuOpen(!nav.className.split(/\s+/).includes("menu-open"));
+  });
+  // Tapping a menu link closes the menu at once: the landing
+  // re-renders on navigation anyway, and the immediate close
+  // reads faster than waiting for it.
+  menu.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement | null;
+    if (target && typeof target.closest === "function" && target.closest("a, button")) {
+      setMenuOpen(false);
+    }
+  });
+  nav.append(logo, menu, burger);
   root.append(nav);
 
   // Hero, centred at 896px over the dot grid and the glow.
@@ -228,7 +264,7 @@ export async function renderLanding(
   heroIn.append(el("span", "badge", "sealed tenders for buying circles"));
   const h1 = el("h1");
   h1.append(
-    document.createTextNode("everyone says their tender is fair. asiri shows you "),
+    document.createTextNode("Everyone says their tender is fair. asiri shows you "),
     el("span", "b", "the proof."),
   );
   heroIn.append(
@@ -285,7 +321,7 @@ export async function renderLanding(
   feed.id = "feed";
   const fh = el("div", "blk-head");
   fh.append(
-    el("h2", undefined, "tenders from the featured circle"),
+    el("h2", undefined, "Tenders from the featured circle"),
     el("p", undefined, `read straight from the chain · ${BUILDER_RUN_LABEL}`),
   );
   feed.append(fh);
@@ -346,7 +382,7 @@ export async function renderLanding(
   how.id = "how";
   const hh = el("div", "blk-head");
   hh.append(
-    el("h2", undefined, "how it works"),
+    el("h2", undefined, "How it works"),
     el("p", undefined, "seven steps, in the order they run. the money sits in the template from the lock to the payment."),
   );
   how.append(hh);
@@ -405,7 +441,7 @@ export async function renderLanding(
   for (const [n, title, text, linkLabel, linkHash] of stepData) {
     const s = el("div", "lstep");
     const body = el("div");
-    body.append(el("h3", undefined, title), el("p", undefined, text));
+    body.append(el("h3", undefined, cap(title)), el("p", undefined, text));
     const a = el("a", "step-link", `${linkLabel} →`);
     a.href = linkHash;
     body.append(a);
@@ -418,7 +454,7 @@ export async function renderLanding(
   rig.id = "rig";
   const rigLeft = el("div");
   rigLeft.append(
-    el("h3", undefined, "do not take our word for it. try to rig it."),
+    el("h3", undefined, "Do not take our word for it. Try to rig it."),
     el(
       "p",
       undefined,
@@ -430,22 +466,22 @@ export async function renderLanding(
   setAria(console_, "aria-live", "polite");
   const consoleHead = () =>
     el("div", "cm", "asiri template · mainnet attack record");
-  console_.append(
-    consoleHead(),
-    el("div", "dim", "waiting for an attack…"),
-  );
+  const fillConsole = (a: RigAnswer): void => {
+    console_.replaceChildren(
+      consoleHead(),
+      el("div", undefined, a.call),
+      ...a.rejected.map((line) => el("div", "rj", line)),
+      el("div", "ok", a.source),
+      el("div", "ok", "the tender is untouched."),
+    );
+  };
+  // The console opens on the first attack's answer, not empty:
+  // a visitor who never clicks a button still sees what the
+  // chain does to a rig attempt.
+  fillConsole(rigAnswer("peek"));
   for (const [kind, label] of RIG_BUTTONS) {
     const b = el("button", undefined, label);
-    b.addEventListener("click", () => {
-      const a = rigAnswer(kind);
-      console_.replaceChildren(
-        consoleHead(),
-        el("div", undefined, a.call),
-        ...a.rejected.map((line) => el("div", "rj", line)),
-        el("div", "ok", a.source),
-        el("div", "ok", "the tender is untouched."),
-      );
-    });
+    b.addEventListener("click", () => fillConsole(rigAnswer(kind)));
     rigBtns.append(b);
   }
   rigLeft.append(rigBtns);
@@ -458,7 +494,7 @@ export async function renderLanding(
   const faq = el("section", "faq");
   faq.id = "faq";
   const faqLeft = el("div");
-  faqLeft.append(el("h2", undefined, "some questions, answered"));
+  faqLeft.append(el("h2", undefined, "Some questions, answered"));
   const flinks = el("div", "flinks");
   for (const [label, hash] of [
     ["run the verifier", "#/app/verify"],
@@ -492,7 +528,7 @@ export async function renderLanding(
     ],
     [
       "what does a seller risk?",
-      "a bond, posted with the bid. reveal, win or lose, and it returns in full. stay silent while the tender awards and the bond is split, half to the circle, half locked forever. if the tender instead expires with no award, an unrevealed bond comes back whole. the seller also keeps a salt safe: lose it and the bid can never be revealed.",
+      "a bond, posted with the bid. reveal, win or lose, and it returns in full. stay silent while the tender awards and the bond is split, half to the circle, half locked forever. if the tender instead expires with no award, an unrevealed bond comes back whole. the seller also keeps the salt private: lose it and the bid can never be revealed.",
     ],
     [
       "do i need a wallet to check a tender?",
@@ -505,7 +541,7 @@ export async function renderLanding(
   ];
   for (const [q, a] of qa) {
     const d = el("details");
-    const s = el("summary", undefined, q);
+    const s = el("summary", undefined, cap(q));
     s.append(el("span", "pl", "+"));
     d.append(s, el("p", undefined, a));
     acc.append(d);
@@ -574,30 +610,30 @@ export async function renderLanding(
   const footCols = el("div", "foot-cols");
   for (const [title, linksList] of [
     [
-      "product",
+      "Product",
       [
-        ["tenders", "#feed"],
-        ["how it works", "#how"],
-        ["questions", "#faq"],
-        ["the proof", "#proof"],
+        ["Tenders", "#feed"],
+        ["How it works", "#how"],
+        ["Questions", "#faq"],
+        ["The proof", "#proof"],
       ],
     ],
     [
-      "verify",
+      "Verify",
       [
-        ["verification results", "#/app/results"],
-        ["falsification cards", "#/app/results"],
-        ["run the verifier", "#/app/verify"],
-        ["help", "#/app/help"],
+        ["Verification results", "#/app/results"],
+        ["Falsification cards", "#/app/results"],
+        ["Run the verifier", "#/app/verify"],
+        ["Help", "#/app/help"],
       ],
     ],
     [
-      "the app",
+      "The app",
       [
-        ["circles and tenders", "#/app/overview"],
-        ["start a circle or tender", "#/app/create"],
-        ["bid and reveal", "#/app/seller"],
-        ["approvals", "#/app/approvals"],
+        ["Circles and tenders", "#/app/overview"],
+        ["Start a circle or tender", "#/app/create"],
+        ["Bid and reveal", "#/app/seller"],
+        ["Approvals", "#/app/approvals"],
       ],
     ],
   ] as const) {

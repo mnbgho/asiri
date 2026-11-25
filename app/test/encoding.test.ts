@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { arg } from "../src/args";
 import { decode, hexToBytes } from "../src/cbor";
-import { decodeCircleInfo, decodeRules, decodeTenderInfo } from "../src/model";
+import { decodeCircleInfo, decodeAward, decodeRules, decodeTenderInfo } from "../src/model";
 import { FIXTURES, K1, K2, K3, COMP } from "./fixtures";
 
 const lit = (a: unknown) => (a as { Literal: string }).Literal;
@@ -102,6 +102,39 @@ describe("info decoders read tari_bor values", () => {
     expect(info.forfeitLocked).toBe(222n);
     expect(info.receiptIssued).toBe(true);
   });
+  it("decodes a seven-field award record", () => {
+    // The on-chain award carries the epoch it was computed at and
+    // whether an executed override put it in place, behind the
+    // five fields the checks use. Values from the recorded
+    // Esmeralda dispute tender.
+    const award = decodeAward([
+      hexToBytes("ca".repeat(32)),
+      hexToBytes("58".repeat(32)),
+      15_000_000n,
+      2n,
+      2n,
+      13161n,
+      false,
+    ]);
+    expect(award.winningPrice).toBe(15_000_000n);
+    expect(award.commitmentsCount).toBe(2);
+    expect(award.revealsCount).toBe(2);
+    expect(award.epoch).toBe(13161);
+    expect(award.byOverride).toBe(false);
+  });
+
+  it("rejects a five-field award record", () => {
+    expect(() =>
+      decodeAward([
+        hexToBytes("ca".repeat(32)),
+        hexToBytes("58".repeat(32)),
+        15_000_000n,
+        2n,
+        2n,
+      ]),
+    ).toThrow("award has 5 fields");
+  });
+
   it("decodes a circle info", () => {
     const info = decodeCircleInfo(decode(hexToBytes(FIXTURES.circle_info)));
     expect(info.name).toBe("Uyo Shopkeepers Circle");

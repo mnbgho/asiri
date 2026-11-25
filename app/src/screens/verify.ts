@@ -49,7 +49,7 @@ export async function renderVerify(
   const run = async () => {
     results.replaceChildren();
     const addr = addrIn.value.trim();
-    if (!addr.startsWith("component_")) {
+    if (!/^component_[0-9a-f]{64}$/.test(addr)) {
       const errEl = el(
         "div",
         "err",

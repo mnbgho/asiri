@@ -5,7 +5,7 @@
 // generation that drops a card, drifts a quoted row, or
 // overclaims fails here rather than on the page.
 import { beforeEach, describe, expect, it } from "vitest";
-import { App } from "../src/app";
+import { App, cap } from "../src/app";
 import {
   FALSIFICATION_CARDS,
   FALSIFICATION_CARDS_JSON,
@@ -260,9 +260,9 @@ describe("falsification section render", () => {
     const r = new FakeEl("div") as unknown as HTMLElement;
     await renderResults(app, r, () => {});
     const t = (r as unknown as FakeEl).textContent;
-    expect(t).toContain("falsification cards");
+    expect(t).toContain("Falsification cards");
     for (const c of FALSIFICATION_CARDS) {
-      expect(t).toContain(c.title);
+      expect(t).toContain(cap(c.title));
       expect(t).toContain(c.lie);
     }
     expect(t).toContain("standalone verifier: 11 of 13 checks passed");
@@ -275,7 +275,7 @@ describe("falsification section render", () => {
     // it is the last section on the screen, and the ledger
     // above it carries the standing "not burned" form, which
     // is the one allowed use of the word.
-    const section = t.slice(t.indexOf("falsification cards"));
+    const section = t.slice(t.indexOf("Falsification cards"));
     expect(section).not.toContain("burned");
   });
 });

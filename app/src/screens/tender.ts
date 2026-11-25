@@ -6,7 +6,7 @@ import * as B from "../builders";
 import { disputeWindowOpen } from "../model";
 import { decodeTenderState, decodeVaultBalance, plainAddressError } from "../state";
 import { deadlineSpan } from "../time";
-import { actionButton, box, feeNote, field, hashSpan, kv, kvNode, money, notice, settleOutcome, textInput } from "./common";
+import { actionButton, box, feeNote, field, hashSpan, kv, kvNode, money, notice, requireWallet, settleOutcome, textInput } from "./common";
 import { evidenceCheckControl, hashFileControl } from "./evidence-ui";
 import type { FeeAction } from "../fees";
 
@@ -205,6 +205,10 @@ export async function renderTender(
     };
     const addBtn = (label: string, cls: string, fn: () => Promise<void>, fee?: FeeAction) => {
       const b = actionButton(label, cls, async () => {
+        // Acting needs a wallet: the gate opens the connect
+        // modal, and the action does not run until the visitor
+        // connects and taps again.
+        if (!requireWallet(app, label.toLowerCase())) return;
         try {
           await fn();
         } catch (e) {
@@ -336,11 +340,17 @@ export async function renderTender(
         evBox.body.append(el("div", "empty", "no events recorded yet."));
       }
       const seen = new Set<string>();
+      const byTopic = new Map<string, string[]>();
       for (const ev of events.slice(0, 40)) {
         const txId = ev.txId;
         const topic = ev.topic;
         if (!txId || seen.has(txId + topic)) continue;
         seen.add(txId + topic);
+        const list = byTopic.get(topic) ?? [];
+        list.push(txId);
+        byTopic.set(topic, list);
+      }
+      const txRow = (topic: string, txId: string): HTMLElement => {
         const row = el("div", "commit-row");
         row.append(el("span", undefined, topic.replaceAll("_", " ")));
         row.append(el("span", "spacer"));
@@ -367,7 +377,27 @@ export async function renderTender(
           })();
         });
         row.append(copyBtn);
-        evBox.body.append(row);
+        return row;
+      };
+      for (const [topic, txIds] of byTopic) {
+        if (txIds.length === 1) {
+          evBox.body.append(txRow(topic, txIds[0]));
+          continue;
+        }
+        // A repeated event type folds behind one line naming
+        // the type and the count, so thirty near-identical
+        // rows read as one line until opened. Every
+        // transaction id stays listed, nothing is hidden
+        // for good.
+        const group = el("details", "tx-group");
+        const summary = el("summary");
+        summary.append(
+          document.createTextNode(topic.replaceAll("_", " ")),
+          el("span", "cnt", `${txIds.length} events`),
+        );
+        group.append(summary);
+        for (const txId of txIds) group.append(txRow(topic, txId));
+        evBox.body.append(group);
       }
       if (events.length) {
         const links = el("div", "srow mt");

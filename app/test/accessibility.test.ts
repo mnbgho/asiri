@@ -214,7 +214,7 @@ describe("focus and headings", () => {
     const headings = walkAll(r).filter((c) => /^h[1-6]$/.test(c.tag));
     expect(headings.length).toBeGreaterThanOrEqual(1);
     expect(headings[0].tag).toBe("h2");
-    expect(headings[0].textContent).toContain("verify a tender");
+    expect(headings[0].textContent).toContain("Verify a tender");
     // The frame's screen title is the h1 (main.ts is not
     // importable in a test: it runs the router on import).
     const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");

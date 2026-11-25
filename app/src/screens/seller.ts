@@ -15,7 +15,7 @@ import { bytesToHex, hexToBytes } from "../cbor";
 import { commitmentHash } from "../hash";
 import { decodeTenderState, plainAddressError, type TenderComponentState } from "../state";
 import { deadlineText, revealWindowText } from "../time";
-import { actionButton, box, downloadTextFile, feeNote, field, kv, money, notice, settleOutcome, textInput } from "./common";
+import { actionButton, box, downloadTextFile, feeNote, field, kv, money, notice, requireWallet, settleOutcome, textInput } from "./common";
 
 export interface SavedBid {
   tender: string;
@@ -148,7 +148,8 @@ export async function renderSeller(
   );
   const summary = el("div");
   const commitBtn = actionButton("commit this bid", "btn-blue", async () => {
-    if (!app.wallet.account) throw new Error("connect your wallet first");
+    const account = requireWallet(app, "commit this bid");
+    if (!account) return;
     const tenderAddr = tenderIn.value.trim();
     const sub = await readSubstatePlain(app, tenderAddr);
     if (!sub)
@@ -213,7 +214,7 @@ export async function renderSeller(
     // still be recoverable, or the bond is forfeited.
     saveBid(bid);
     const { outcome } = await app.submitAction(
-      B.buildCommitBid(app.wallet.account, tenderAddr, commitment, t.rules.bondAmount),
+      B.buildCommitBid(account, tenderAddr, commitment, t.rules.bondAmount),
     );
     if (!settleOutcome(app, wrap, outcome)) return;
     go(`#/app/tender/${tenderAddr}`);
@@ -234,6 +235,7 @@ export async function renderSeller(
     row.append(el("span", "hash", bid.commitment.slice(0, 16) + "…"));
     row.append(el("span", "spacer"));
     const btn = actionButton("reveal", "btn-blue btn-sm", async () => {
+      if (!requireWallet(app, "reveal this bid")) return;
       await checkRevealable(app, bid.tender);
       const { outcome } = await app.submitAction(
         B.buildRevealBid(
@@ -265,6 +267,7 @@ export async function renderSeller(
     field("payment identity", mIdentity),
   );
   const mBtn = actionButton("reveal with pasted details", "btn-white", async () => {
+    if (!requireWallet(app, "reveal a bid")) return;
     const salt = hexToBytes(mSalt.value.trim().toLowerCase());
     if (salt.length !== 32) throw new Error("the salt must be 32 bytes");
     await checkRevealable(app, mTender.value.trim());

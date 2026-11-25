@@ -163,6 +163,8 @@ describe("personalItems: winner claims", () => {
         winningPrice: 15_000_000n,
         commitmentsCount: 1,
         revealsCount: 1,
+        epoch: 98,
+        byOverride: false,
       },
       settlement: { winner: ME, price: 15_000_000n, epoch: 98 },
       ...over,
@@ -191,6 +193,8 @@ describe("personalItems: winner claims", () => {
         winningPrice: 15_000_000n,
         commitmentsCount: 1,
         revealsCount: 1,
+        epoch: 98,
+        byOverride: false,
       },
     });
     expect(run({ tenders: [[TENDER, others]] })).toEqual([]);

@@ -85,8 +85,12 @@ import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+# The verifier lives in the asiri-verify package; scripts/verify.py
+# is only a thin CLI shim into it, with none of the module's names.
 spec = importlib.util.spec_from_file_location(
-    "asiri_verify", HERE / "verify.py")
+    "asiri_verify",
+    HERE / ".." / "packages" / "asiri-verify" / "src" / "asiri_verify"
+    / "verify.py")
 V = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(V)
 
@@ -354,6 +358,57 @@ def extract_reason(final):
 
 
 # ----------------------------------------------------------------- run
+
+def rejection_reason_matches(reason, expected):
+    """True when the chain's refusal carries the expected wording.
+    A missing reason never matches, and no expected wording means
+    no check. The match is a case-insensitive substring, because
+    the daemon wraps the template's own wording in its result."""
+    if expected is None:
+        return True
+    if not reason:
+        return False
+    return expected.lower() in reason.lower()
+
+
+# The chain's own wording for each attack's rejection, as
+# recorded in the mainnet attack run (evidence/mainnet.md).
+# A rejection that does not carry its step's wording is a
+# finding: the chain refused the transaction, but not for the
+# reason the attack was testing, so the step proved nothing.
+# Keyed by the start of the step label.
+EXPECTED_REASONS = {
+    "duplicate commitment": "seller has already committed in this tender",
+    "commit with too small a bond": "bond must equal the locked bond amount",
+    "rewrite the locked rules": "tender is not a draft",
+    "commit after the bid deadline": "the bid window has closed",
+    "reveal with the wrong salt": "no matching commitment for this reveal",
+    "reveal with the wrong price": "no matching commitment for this reveal",
+    "reveal of seller1's bid under seller2's identity":
+        "no matching commitment for this reveal",
+    "reveal of a bid that was never committed":
+        "no matching commitment for this reveal",
+    "the same bid revealed twice": "no matching commitment for this reveal",
+    "close the reveal window before its deadline":
+        "the reveal window is still open",
+    "advance to delivery inside the override window":
+        "the override window is still open",
+    "override proposed with an all-zero rationale hash":
+        "an override requires a rationale hash",
+    "override proposed for a bid nobody revealed":
+        "an override can only choose a valid revealed bid",
+    "a single approver calls release_refund directly":
+        "Access Denied",
+    "the loser tries to claim the payment":
+        "only the winning payment identity can claim the payment",
+    "an account that never bid tries to claim a bond":
+        "no returnable bond for this seller",
+    "the winner claims the payment a second time":
+        "payment already claimed",
+    "circle collects the forfeits a second time":
+        "forfeits already claimed by the circle",
+}
+
 
 class AttackRun:
     def __init__(self, args):
@@ -818,6 +873,22 @@ class AttackRun:
                     time.sleep(20)
                 continue
             self.results.append(entry)
+            # A rejection is only the tested refusal when the
+            # chain refused it for the tested reason. Anything
+            # else (a window that turned, a wrong account, a
+            # stale read) is a finding, not a pass, and the run
+            # stops here the same way a wrong outcome stops it.
+            if not ok and expect == "reject":
+                expected_reason = next(
+                    (r for p, r in EXPECTED_REASONS.items()
+                     if label.startswith(p)), None)
+                if not rejection_reason_matches(reason, expected_reason):
+                    entry["finding"] = True
+                    entry["reason_expected"] = expected_reason
+                    self.log(f"attack: FINDING at step {done}: {label} "
+                             f"(rejected, but not with the expected reason: "
+                             f"expected {expected_reason!r}, got {reason!r})")
+                    return 1
             if got != expect:
                 self.log(f"attack: FINDING at step {done}: "
                          f"{label} (expected {expect}, got {got})")

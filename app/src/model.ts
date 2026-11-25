@@ -107,6 +107,8 @@ export interface AwardRecord {
   winningPrice: bigint;
   commitmentsCount: number;
   revealsCount: number;
+  epoch: number;
+  byOverride: boolean;
 }
 
 export interface OverrideRecord {
@@ -245,15 +247,18 @@ export function decodeState(v: CborValue): TenderStateName {
   return name;
 }
 
-function decodeAward(v: CborValue): AwardRecord {
+export function decodeAward(v: CborValue): AwardRecord {
   const f = arr(v, "award");
-  if (f.length !== 5) throw new Error(`award has ${f.length} fields, expected 5`);
+  // As in state.ts: the on-chain award carries seven fields.
+  if (f.length !== 7) throw new Error(`award has ${f.length} fields, expected 7`);
   return {
     winner: hex(f[0], "winner"),
     winningCommitment: hex(f[1], "winning_commitment"),
     winningPrice: int(f[2], "winning_price"),
     commitmentsCount: num(f[3], "commitments_count"),
     revealsCount: num(f[4], "reveals_count"),
+    epoch: num(f[5], "epoch"),
+    byOverride: bool(f[6], "by_override"),
   };
 }
 

@@ -8,7 +8,7 @@ import { gatherCircleRecord } from "../circle-export";
 import { withdrawalError } from "../model";
 import { decodeCircleState, decodeVaultBalance } from "../state";
 import type { Instruction } from "../wallet";
-import { actionButton, box, downloadTextFile, feeNote, field, hashSpan, kv, kvNode, money, notice, settleOutcome, textInput } from "./common";
+import { actionButton, box, downloadTextFile, feeNote, field, hashSpan, kv, kvNode, money, notice, requireWallet, settleOutcome, textInput } from "./common";
 
 export async function renderCircle(
   app: App,
@@ -26,8 +26,11 @@ export async function renderCircle(
 
     // Every circle action settles the same way: a chain failure
     // is shown here and stops the flow, an unconfirmed
-    // submission leaves a note for the next screen.
+    // submission leaves a note for the next screen. Acting
+    // needs a wallet first: the gate opens the connect modal
+    // and nothing is submitted until the visitor connects.
     const act = async (instructions: Instruction[]): Promise<void> => {
+      if (!requireWallet(app, "do this on the circle")) return;
       const { outcome } = await app.submitAction(instructions);
       if (!settleOutcome(app, wrap, outcome)) return;
       go(`#/app/circle/${address}`);
@@ -59,9 +62,10 @@ export async function renderCircle(
     amountIn.placeholder = "amount in tari";
     treasury.body.append(field("fund the treasury from your account", amountIn));
     const fundBtn = actionButton("deposit", "btn-blue", async () => {
-      if (!app.wallet.account) throw new Error("connect your wallet first");
+      const account = requireWallet(app, "deposit to the treasury");
+      if (!account) return;
       await act(
-        B.buildDepositTreasury(app.wallet.account, address, parseTari(amountIn.value)),
+        B.buildDepositTreasury(account, address, parseTari(amountIn.value)),
       );
     }, showError);
     treasury.body.append(fundBtn);
@@ -146,7 +150,7 @@ export async function renderCircle(
       ),
     );
     const wdBtn = actionButton("propose withdrawal", "btn-white", async () => {
-      if (!app.wallet.account) throw new Error("connect your wallet first");
+      if (!requireWallet(app, "propose a withdrawal")) return;
       const amount = parseTari(wdAmountIn.value);
       const to = wdToIn.value.trim().toLowerCase();
       const err = withdrawalError(amount, to, treasuryBalance);

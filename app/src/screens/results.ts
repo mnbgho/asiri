@@ -26,7 +26,7 @@
 // falsification cards from falsification-data.ts: labelled
 // tampers of the records above, rejected by both verifiers
 // at the quoted checks.
-import { App, el, explorerLink, setAria } from "../app";
+import { App, cap, el, explorerLink, setAria } from "../app";
 import {
   FALSIFICATION_CARDS,
   FALSIFICATION_CARDS_FILENAME,
@@ -229,12 +229,12 @@ function renderMainnetRecord(
       go(`#/app/verify/${t.tender}`);
     });
     b.body.append(recheck);
-    const cmd = el("div", "detail mt");
+    const cmd = el("div", "cmdline mt");
     cmd.append(
       document.createTextNode("or run it yourself: "),
       el(
-        "span",
-        "hash",
+        "code",
+        undefined,
         `python3 scripts/verify.py ${t.tender} --network ${MAINNET_RESULTS_META.network}`,
       ),
     );
@@ -294,7 +294,7 @@ function attackRow(a: MainnetAttack): HTMLElement {
 }
 
 function renderMainnetAttacks(body: HTMLElement): void {
-  body.append(el("h3", "mt", "the attacks: eighteen, all rejected"));
+  body.append(el("h3", "mt", "The attacks: eighteen, all rejected"));
   body.append(
     notice(
       "every attack below is an ordinary call to this tender's template from the circle's own accounts, with wrong inputs, wrong timing, or the wrong actor. the chain rejected each one and kept the fee. the tender then finished honestly, as the record above shows.",
@@ -404,12 +404,12 @@ export async function renderResults(
     // address and the network come from the results data
     // itself, so the printed command cannot drift from the
     // record it checks.
-    const cmd = el("div", "detail mt");
+    const cmd = el("div", "cmdline mt");
     cmd.append(
       document.createTextNode("or run it yourself: "),
       el(
-        "span",
-        "hash",
+        "code",
+        undefined,
         `python3 scripts/verify.py ${t.tender} --network ${RESULTS_META.network}`,
       ),
     );
@@ -551,7 +551,7 @@ export async function renderResults(
   falsification.body.append(dlCards);
 
   for (const card of FALSIFICATION_CARDS) {
-    falsification.body.append(el("h3", "mt", card.title));
+    falsification.body.append(el("h3", "mt", cap(card.title)));
     kvNode(
       falsification.body,
       "tender",

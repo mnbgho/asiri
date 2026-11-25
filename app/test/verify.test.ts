@@ -15,7 +15,7 @@ import {
   type CborValue,
 } from "../src/cbor";
 import { commitmentHash, rulesHash } from "../src/hash";
-import { NETWORKS, type Indexer, type NetworkConfig } from "../src/indexer";
+import { NETWORKS, MalformedResponseError, TransportError, type Indexer, type NetworkConfig } from "../src/indexer";
 import type { TenderRules } from "../src/model";
 import { verifyTender } from "../src/verify";
 
@@ -241,11 +241,13 @@ describe("verifier reveal reads", () => {
 
   async function revealedIndexer(
     transaction: (id: string) => Promise<unknown>,
+    events?: () => Promise<{ txId: string; topic: string }[]>,
   ): Promise<Indexer> {
     const digest = await commitmentHash(PRICE, SALT, IDENTITY);
     return fakeIndexer([commitment(IDENTITY, digest, true)], {
       reveals: [revealRecord(digest)],
-      events: async () => [{ txId: "tx-reveal", topic: "event" }],
+      events:
+        events ?? (async () => [{ txId: "tx-reveal", topic: "event" }]),
       transaction,
     });
   }
@@ -280,6 +282,40 @@ describe("verifier reveal reads", () => {
     expect(report.unknown.map((r) => r.check)).toContain(
       "reveals verify against commitments",
     );
+  });
+
+  it("fails when the event list arrives malformed", async () => {
+    const { report } = await verifyTender(
+      await revealedIndexer(
+        async () => revealTxBody(),
+        async () => {
+          throw new MalformedResponseError("the event list is not a list");
+        },
+      ),
+      TENDER,
+    );
+    const row = report.rows.find(
+      (r) => r.check === "reveals verify against commitments",
+    );
+    expect(row?.ok).toBe(false);
+    expect(row?.detail).toContain("malformed");
+    expect(report.unknown.map((r) => r.check)).not.toContain(
+      "reveals verify against commitments",
+    );
+  });
+
+  it("fails when a reveal transaction body arrives malformed", async () => {
+    const { report } = await verifyTender(
+      await revealedIndexer(async () => {
+        throw new SyntaxError("Unexpected token");
+      }),
+      TENDER,
+    );
+    const row = report.rows.find(
+      (r) => r.check === "reveals verify against commitments",
+    );
+    expect(row?.ok).toBe(false);
+    expect(row?.detail).toContain("malformed");
   });
 
   it("names a component that is not a tender in plain words", async () => {
@@ -317,6 +353,125 @@ describe("verifier reveal reads", () => {
     expect(row?.ok).toBe(false);
     expect(row?.detail).toContain("no reveal transaction found");
   });
+
+  it("reports the reveals unknown when the event history cannot be read", async () => {
+    const indexer = await revealedIndexer(async () => revealTxBody());
+    const inner = indexer as unknown as {
+      events: () => Promise<{ txId: string; topic: string }[]>;
+    };
+    inner.events = async () => {
+      throw new Error("test transport failure");
+    };
+    const { report } = await verifyTender(indexer, TENDER);
+    const row = report.rows.find(
+      (r) => r.check === "reveals verify against commitments",
+    );
+    expect(row?.ok).toBeNull();
+    expect(row?.detail).toContain("could not be read");
+  });
+});
+
+// Transport handling: a read that fails in transit must report
+// could not be read, never a failure, and a record that arrived
+// but cannot be decoded must fail, never throw the whole run.
+// Mirrors the same cases in scripts/test_verify.py.
+describe("verifier transport handling", () => {
+  type SubstateFn = (
+    id: string,
+  ) => Promise<{ version: number; value: CborValue } | null>;
+
+  async function throwingSubstate(
+    throwFor: (id: string) => Error | null,
+  ): Promise<Indexer> {
+    const indexer = await fakeIndexer([commitment(SELLER_A, COMMIT, false)]);
+    const inner = indexer as unknown as { substate: SubstateFn };
+    const original = inner.substate.bind(inner);
+    inner.substate = async (id: string) => {
+      const err = throwFor(id);
+      if (err) throw err;
+      return original(id);
+    };
+    return indexer;
+  }
+
+  it("reports could not read when the tender read fails in transit", async () => {
+    const indexer = await throwingSubstate(() => new TransportError("test transport failure"));
+    const { report } = await verifyTender(indexer, TENDER);
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].check).toBe("tender exists");
+    expect(report.rows[0].ok).toBeNull();
+    expect(report.rows[0].detail).toContain("could not be read");
+  });
+
+  it("fails when the tender read fails for another reason", async () => {
+    const indexer = await throwingSubstate(() => new Error("substate has no live value"));
+    const { report } = await verifyTender(indexer, TENDER);
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].check).toBe("tender exists");
+    expect(report.rows[0].ok).toBe(false);
+  });
+
+  it("fails when the tender record cannot be decoded", async () => {
+    const indexer = await fakeIndexer([commitment(SELLER_A, COMMIT, false)]);
+    const inner = indexer as unknown as { substate: SubstateFn };
+    const original = inner.substate.bind(inner);
+    inner.substate = async (id: string) => {
+      const got = await original(id);
+      if (!got || id !== TENDER) return got;
+      const root = structuredClone(got.value) as unknown[];
+      const entry = (root[1] as unknown[])[0] as unknown[];
+      entry[1] = [1, 2, 3];
+      return { version: 0, value: root as CborValue };
+    };
+    const { report } = await verifyTender(indexer, TENDER);
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].check).toBe("tender exists");
+    expect(report.rows[0].ok).toBe(false);
+    expect(report.rows[0].detail).toContain("unreadable");
+  });
+
+  it("fails when the award record has five fields", async () => {
+    // The on-chain award carries seven fields; a five-field
+    // record is malformed, not a shorter form.
+    const indexer = await fakeIndexer([commitment(SELLER_A, COMMIT, false)], {
+      award: [B(SELLER_A), B(COMMIT), 2140n, 1, 1],
+    });
+    const { report } = await verifyTender(indexer, TENDER);
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].check).toBe("tender exists");
+    expect(report.rows[0].ok).toBe(false);
+    expect(report.rows[0].detail).toContain("award has 5 fields");
+  });
+
+  it("reports could not read when the template read fails in transit", async () => {
+    const indexer = await throwingSubstate((id) =>
+      id === TEMPLATE ? new TransportError("test transport failure") : null,
+    );
+    const { report } = await verifyTender(indexer, TENDER);
+    const row = report.rows.find((r) => r.check === "template code hash");
+    expect(row?.ok).toBeNull();
+    expect(row?.detail).toContain("could not be read");
+  });
+
+  it("reports could not read when the escrow read fails in transit", async () => {
+    const indexer = await throwingSubstate((id) =>
+      id === ESCROW ? new TransportError("test transport failure") : null,
+    );
+    const { report } = await verifyTender(indexer, TENDER);
+    const row = report.rows.find((r) => r.check === "escrow funding");
+    expect(row?.ok).toBeNull();
+    expect(row?.detail).toContain("could not be read");
+  });
+
+  it("reports could not read when the bond read fails in transit", async () => {
+    const indexer = await throwingSubstate((id) =>
+      id === BONDS ? new TransportError("test transport failure") : null,
+    );
+    const { report } = await verifyTender(indexer, TENDER);
+    const row = report.rows.find((r) => r.check === "bond vault reconciles");
+    expect(row?.ok).toBeNull();
+    expect(row?.detail).toContain("could not be read");
+  });
 });
 
 // The settlement row's detail must state the comparison it
@@ -326,7 +481,7 @@ describe("verifier reveal reads", () => {
 // the award". Mirrors the same cases in scripts/test_verify.py.
 describe("verifier settlement wording", () => {
   const PRICE = 2140n;
-  const award: CborValue = [B(SELLER_A), B(COMMIT), PRICE, 1, 1];
+  const award: CborValue = [B(SELLER_A), B(COMMIT), PRICE, 1, 1, 25, false];
 
   it("says the winner matches when the settlement names the award winner", async () => {
     const { report } = await verifyTender(

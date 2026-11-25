@@ -15,7 +15,7 @@ import {
   type TenderComponentState,
 } from "../state";
 import { savedBids } from "./seller";
-import { actionButton, box, feeNote, field, hashSpan, kvNode, money, notice, settleOutcome, textInput } from "./common";
+import { actionButton, box, feeNote, field, hashSpan, kvNode, money, notice, requireWallet, settleOutcome, textInput } from "./common";
 import { evidenceCheckControl } from "./evidence-ui";
 
 export async function renderApprovals(
@@ -89,6 +89,7 @@ export async function renderApprovals(
   }
 
   const run = async (build: () => Parameters<App["wallet"]["submit"]>[0], dest: string) => {
+    if (!requireWallet(app, "sign and submit on this tender")) return;
     const { outcome } = await app.submitAction(build());
     if (!settleOutcome(app, wrap, outcome)) return;
     go(dest);

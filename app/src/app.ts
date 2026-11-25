@@ -276,6 +276,16 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /**
+ * Headings open with a capital letter everywhere in the app,
+ * whatever case the source string or the chain record carries.
+ * The heading renderers pass their titles through here, so the
+ * rule holds for data-driven headings too, not only literals.
+ */
+export function cap(text: string): string {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
+/**
  * Remove every error banner under a screen's root. A screen
  * shows its latest error only: repeated failures replace the
  * banner instead of stacking copies of it down the page.

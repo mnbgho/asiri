@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asiri-verify"
+version = "0.1.0"
+description = "Verify one Asiri sealed tender from public indexer data alone."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Itachi"}]
+keywords = ["tari", "ootle", "tender", "verification"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/mnbgho/asiri"
+Source = "https://github.com/mnbgho/asiri"
+"Live app" = "https://asiri-libg.netlify.app"
+
+[project.scripts]
+asiri-verify = "asiri_verify.verify:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

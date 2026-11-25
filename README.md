@@ -50,7 +50,12 @@ Every tender's public record can be checked without trusting this app or its ope
 - the settlement equals the award, was reached only after delivery confirmation at threshold or a dispute resolved for the winner at its higher threshold, and honours the winning commitment's payment identity,
 - every bond reached a recorded outcome, the forfeit split is recorded, and the bond vault reconciles.
 
-It needs Python 3 and nothing else: no packages to install, no wallet, no account, no keys. It does need network access to the network's public indexer.
+It needs Python 3 and nothing else: no wallet, no account, no keys. It does need network access to the network's public indexer. Run it from the repo with no install, or install it from PyPI:
+
+```
+pip install asiri-verify
+asiri-verify component_<tender address>
+```
 
 Run it from the repo root:
 
@@ -62,6 +67,8 @@ python3 scripts/verify.py component_<tender address> --network esmeralda
 Mainnet is the default network; pass `--network esmeralda` for a testnet tender. Add `--receipt` to print the full receipt as JSON instead of the check list, `--json` for the check list as JSON, and `--rationale <path>` to check an override's published rationale text against its recorded hash. For an override tender, run with `--rationale`: without the text, that one check reports a fail marked unverifiable, because the run was never given the text to check.
 
 Each check prints one line, pass, fail, or could not be read, and the run ends with a count. The exit code is zero only when every check passes. Could not be read means a reveal's transaction could not be read from any indexer, so that reveal cannot be recomputed against its commitment today, for example when an indexer has pruned old transaction bodies. It is neither a pass nor a failure, and the tender is not fully verified until every check has run, so the exit code stays non-zero.
+
+A live re-run of a mainnet season tender reads 12 of 13 today, with the reveal recomputation as could not be read: the mainnet indexer no longer serves the reveal transaction bodies it served when the shipped receipts were produced at 13 of 13. The receipts in the repo carry the full run.
 
 ## Attack your own tender
 

@@ -244,6 +244,7 @@ mod tender {
                 "the new approver set is smaller than the locked dispute threshold"
             );
             let id = self.next_proposal_id;
+            assert!(id < u32::MAX, "proposal id overflow");
             self.next_proposal_id += 1;
             self.approver_changes.push(ApproverChangeProposal {
                 id,
@@ -470,6 +471,7 @@ mod tender {
                 );
             }
             let id = self.next_proposal_id;
+            assert!(id < u32::MAX, "proposal id overflow");
             self.next_proposal_id += 1;
             self.override_proposals.push(OverrideProposal {
                 id,

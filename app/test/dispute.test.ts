@@ -27,4 +27,17 @@ describe("disputed tender state", () => {
     expect(tender.dispute!.resolvedForWinner).toBeNull();
     expect(tender.dispute!.rationaleHash).toBeNull();
   });
+
+  it("reads the seven-field award record", () => {
+    // The on-chain award carries the epoch it was computed at and
+    // whether an executed override put it in place, behind the
+    // five fields the checks use. This recording proves the shape
+    // on Esmeralda, as the mainnet gate tender proves it on mainnet.
+    expect(tender.award).not.toBeNull();
+    expect(tender.award!.winningPrice).toBe(15_000_000n);
+    expect(tender.award!.commitmentsCount).toBe(2);
+    expect(tender.award!.revealsCount).toBe(2);
+    expect(tender.award!.epoch).toBe(13161);
+    expect(tender.award!.byOverride).toBe(false);
+  });
 });

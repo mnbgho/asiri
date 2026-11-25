@@ -41,7 +41,7 @@ export async function renderOverview(
   const input = el("input");
   input.type = "text";
   input.placeholder = "component_…";
-  input.className = "mono";
+  input.className = "mono addr";
   // The box heading names this field's purpose; the input
   // itself carries it as its accessible name.
   setAria(input, "aria-label", "tender or circle component address");
@@ -169,7 +169,12 @@ export async function renderOverview(
         const pill = el("span", "pill pill-tint", t.state.toLowerCase());
         const meta = el("span", "tm");
         const capLine = el("b", undefined, money(t.rules.budgetCap));
-        const parts = [mark.source];
+        // The row title is already the circle's name, so the
+        // detail line drops it when the source names the same
+        // circle, and keeps only the provenance that adds
+        // information: watched, or discovered on the network.
+        const parts: string[] = [];
+        if (mark.source !== t.circleName) parts.push(mark.source);
         if (mark.discovered && mark.source !== "discovered on the network")
           parts.push("discovered on the network");
         parts.push(`${t.commitments.length} bids in`);
