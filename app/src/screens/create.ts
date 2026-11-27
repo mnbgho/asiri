@@ -67,7 +67,7 @@ export async function renderCreate(
     cBox.body.append(switchBtn);
   }
   const nameIn = textInput();
-  nameIn.placeholder = "Uyo Shopkeepers Circle";
+  nameIn.placeholder = "Enter a name for your circle";
   const approversIn = el("textarea");
   approversIn.rows = 3;
   approversIn.className = "mono";
@@ -180,9 +180,9 @@ export async function renderCreate(
   const specIn = textInput("mono");
   specIn.placeholder = "Or paste the hash, 64 hex characters";
   const capIn = textInput();
-  capIn.placeholder = "10000";
+  capIn.placeholder = "Enter the highest price this tender can pay";
   const bondIn = textInput();
-  bondIn.placeholder = "100";
+  bondIn.placeholder = "Enter the bond each seller posts";
   const win = (label: string, value: string, hint: string) => {
     const i = textInput();
     i.value = value;
