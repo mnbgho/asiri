@@ -27,7 +27,7 @@ dependencies = []
 [project.urls]
 Homepage = "https://github.com/mnbgho/asiri"
 Source = "https://github.com/mnbgho/asiri"
-"Live app" = "https://asiri-libg.netlify.app"
+"Live app" = "https://asiri-xi.vercel.app"
 
 [project.scripts]
 asiri-verify = "asiri_verify.verify:main"

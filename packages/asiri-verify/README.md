@@ -58,4 +58,4 @@ python3 scripts/verify.py component_<tender address>
 ```
 
 Source: https://github.com/mnbgho/asiri
-Live app: https://asiri-libg.netlify.app
+Live app: https://asiri-xi.vercel.app

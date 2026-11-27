@@ -2,7 +2,7 @@
 
 Sealed tenders for buying circles, on Tari Ootle. Live on mainnet.
 
-**App:** https://asiri-libg.netlify.app · **Demo video:** https://youtu.be/f1ow5_5sJ1o
+**App:** https://asiri-xi.vercel.app · **Demo video:** https://youtu.be/f1ow5_5sJ1o
 
 ![Asiri landing page: 7 tenders run on mainnet, 90 of 90 checks passed by two verifiers, 18 attacks refused by the chain](docs/screenshot.png)
 
@@ -34,7 +34,7 @@ Full records, tender by tender, with transactions, fees, and verifier counts: [`
 
 ## Run It Yourself
 
-Open the app, no install needed: https://asiri-libg.netlify.app. It defaults to mainnet, with an Esmeralda switch kept. Reading and verifying need no wallet at all.
+Open the app, no install needed: https://asiri-xi.vercel.app. It defaults to mainnet, with an Esmeralda switch kept. Reading and verifying need no wallet at all.
 
 Or check any tender from the command line. It needs Python 3 and nothing else, no wallet, no account, no keys:
 
@@ -125,7 +125,7 @@ The templates are published on Tari mainnet: circle template `template_b86a46241
 
 The Heartland Provisions Circle is live on mainnet at `component_46237d52379c5d9289814c67ca840f5fa2aad2b12ed2291acf0e74a5091aca71`, three approvers, threshold 2. A season of six tenders ran against it: a plain award, a tie, an override, a dispute, an expiry, and a ten-seller tender. Each one settled or expired and was verified in full by both the standalone script and the app's verifier, with identical readings. A seventh mainnet tender was then run purely as an attack test: eighteen attack transactions were submitted inside its own windows and the chain rejected every one, a single approver's override signature left the award unchanged, one bid ended the tender still sealed, and the tender settled honestly and was verified in full by both verifiers. The same product ran a seven-tender season on the esmeralda testnet before mainnet.
 
-The web app is live at https://asiri-libg.netlify.app and defaults to mainnet, with an esmeralda switch kept. Its results page carries the esmeralda season's recorded receipts and the mainnet season's records, each under its own network's view. Every tender on either network can be re-checked with the verifier above.
+The web app is live at https://asiri-xi.vercel.app and defaults to mainnet, with an esmeralda switch kept. Its results page carries the esmeralda season's recorded receipts and the mainnet season's records, each under its own network's view. Every tender on either network can be re-checked with the verifier above.
 
 </details>
 

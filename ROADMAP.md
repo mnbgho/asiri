@@ -1,6 +1,6 @@
 # Asiri Roadmap
 
-Asiri is live on Tari mainnet today. The app is at https://asiri-libg.netlify.app. This file says what is already done and what comes next. Dates are by month only.
+Asiri is live on Tari mainnet today. The app is at https://asiri-xi.vercel.app. This file says what is already done and what comes next. Dates are by month only.
 
 ## What Is Already Done
 
