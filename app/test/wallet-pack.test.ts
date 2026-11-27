@@ -113,15 +113,20 @@ const ACCOUNT = "component_" + "aa".repeat(32);
 class MockProvider implements TariProvider {
   calls: string[] = [];
   polls = 0;
+  createParams: unknown = null;
+  exactInputSelection = true;
   constructor(private network: string) {}
-  async request(args: { method: string }): Promise<unknown> {
+  async request(args: { method: string; params?: unknown }): Promise<unknown> {
     this.calls.push(args.method);
     switch (args.method) {
       case "tari_requestAccounts":
         return [ACCOUNT];
       case "tari_getNetwork":
         return this.network;
+      case "tari_getCapabilities":
+        return { exactInputSelection: this.exactInputSelection };
       case "tari_createTransactionRequest":
+        this.createParams = args.params;
         return { requestId: "req-1" };
       case "tari_getTransactionRequest":
         this.polls++;
@@ -249,7 +254,7 @@ describe("the submit-time network guard", () => {
   it("stops a submit when the wallet's network cannot be re-read, instead of trusting the connect-time record", async () => {
     class FlakyProvider extends MockProvider {
       private reads = 0;
-      override async request(args: { method: string }): Promise<unknown> {
+      override async request(args: { method: string; params?: unknown }): Promise<unknown> {
         if (args.method === "tari_getNetwork") {
           this.reads++;
           if (this.reads > 1) throw new Error("provider stopped answering");
@@ -309,10 +314,27 @@ describe("balance refresh and disconnect", () => {
     };
   }
 
+  it("fails closed when the wallet cannot pin explicit inputs", async () => {
+    const mock = new MockProvider("esmeralda");
+    mock.exactInputSelection = false;
+    (globalThis as { window?: unknown }).window = { tari: mock };
+    backing.set("asiri:network", "esmeralda");
+    const app = new App();
+    await app.wallet.connect();
+    stubReads(app, () => VAULT_1);
+    await app.deriveIdentity();
+    await expect(
+      app.submitAction([
+        { CallFunction: { address: "template_x", function: "new", args: [] } },
+      ]),
+    ).rejects.toThrow(/cannot pin explicit transaction inputs/);
+    expect(mock.calls).toContain("tari_getCapabilities");
+    expect(mock.calls).not.toContain("tari_createTransactionRequest");
+  });
+
   it("re-derives the balance after a completed action", async () => {
-    (globalThis as { window?: unknown }).window = {
-      tari: new MockProvider("esmeralda"),
-    };
+    const mock = new MockProvider("esmeralda");
+    (globalThis as { window?: unknown }).window = { tari: mock };
     backing.set("asiri:network", "esmeralda");
     const app = new App();
     await app.wallet.connect();
@@ -325,6 +347,12 @@ describe("balance refresh and disconnect", () => {
       { CallFunction: { address: "template_x", function: "new", args: [] } },
     ]);
     expect(outcome.kind).toBe("unconfirmed");
+    expect(mock.createParams).toMatchObject({
+      inputs: [
+        { substate_id: ACCOUNT, version: null },
+        { substate_id: OPERATOR_VAULT, version: null },
+      ],
+    });
     expect(app.balance).toBe(1_000_000n);
   });
 

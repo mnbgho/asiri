@@ -21,6 +21,12 @@ export interface TariProvider {
   request(args: { method: string; params?: unknown }): Promise<unknown>;
 }
 
+/** A dApp input pin; a null version asks the wallet for the current version. */
+export interface SubstateRequirement {
+  substate_id: string;
+  version: number | null;
+}
+
 declare global {
   interface Window {
     tari?: TariProvider;
@@ -164,13 +170,24 @@ export class Wallet {
    */
   async submit(
     instructions: Instruction[],
+    inputs: SubstateRequirement[],
     maxFeeMicroTari = 2_000_000,
   ): Promise<{ result: unknown }> {
+    if (!inputs.length)
+      throw new Error("Fee-payer inputs are missing; no transaction request was created.");
+    const capabilities = (await this.provider.request({
+      method: "tari_getCapabilities",
+    })) as { exactInputSelection?: unknown } | null;
+    if (capabilities?.exactInputSelection !== true)
+      throw new Error(
+        "This wallet cannot pin explicit transaction inputs; no transaction request was created.",
+      );
     const created = (await this.provider.request({
       method: "tari_createTransactionRequest",
       params: {
         kind: "instructions",
         instructions,
+        inputs,
         maxFee: String(maxFeeMicroTari),
       },
     })) as { requestId: string };

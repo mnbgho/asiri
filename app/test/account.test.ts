@@ -5,7 +5,11 @@
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app";
 import { decode, hexToBytes } from "../src/cbor";
-import { decodeAccountOwnerKey, findAccountVault } from "../src/state";
+import {
+  decodeAccountOwnerKey,
+  decodeVaultResourceAddress,
+  findAccountVault,
+} from "../src/state";
 
 const ACCOUNT_SUBSTATE =
   "8200818285582000000000000000000000000000000000000000000000000000000000000000008202815820a47e904bc63ebb9a22da57b4f59ad2cf1c299e972c0180de3235d577b4a64308" +
@@ -42,6 +46,14 @@ const ACCOUNT =
   "component_7cfef3fc07a70824c2884ef79ddc4590d5a37221d3f010c3213edc7ec8dcb22c";
 const VAULT_SUBSTATE =
   "82028182820383d883582001010101010101010101010101010101010101010101010101010101010101011a00efaa950000";
+
+describe("vault state decoder", () => {
+  it("reads the resource address carried by a vault", () => {
+    expect(decodeVaultResourceAddress(decode(hexToBytes(VAULT_SUBSTATE)))).toBe(
+      TARI_TOKEN,
+    );
+  });
+});
 
 function stubIndexer(app: App, fail = false): void {
   const accountRoot = decode(hexToBytes(ACCOUNT_SUBSTATE));

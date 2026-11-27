@@ -101,8 +101,7 @@ export async function renderCreate(
     const auditor = auditorIn.value.trim().toLowerCase() || null;
     if (auditor && !/^[0-9a-f]{64}$/.test(auditor))
       throw new Error("The auditor key is not 64 hex characters");
-    await app.guardWalletNetwork();
-    const { result } = await app.wallet.submit(
+    const { result } = await app.submitWalletInstructions(
       B.buildCreateCircle(cfg.circleTemplate, nameIn.value.trim(), approvers, threshold, auditor, cfg.tenderTemplate),
     );
     const addr = await findCreated(app, result, [account], cfg.circleTemplate);
@@ -276,8 +275,7 @@ export async function renderCreate(
         `Your account holds ${tari(app.balance)} tari, and locking this tender funds the escrow with the full budget cap of ${tari(rules.budgetCap)} tari, before fees. Nothing was submitted. Top up the account, or lower the cap.`,
       );
     status.textContent = "Step 1 of 3: creating the tender. Approve it in your wallet.";
-    await app.guardWalletNetwork();
-    const created = await app.wallet.submit(B.buildCreateTender(cfg.tenderTemplate, circle, rules));
+    const created = await app.submitWalletInstructions(B.buildCreateTender(cfg.tenderTemplate, circle, rules));
     const tender = await findCreated(app, created.result, [account, circle], cfg.tenderTemplate);
     app.watch("tenders", tender);
     status.textContent = "Step 2 of 3: registering the tender on its circle. Approve it in your wallet.";

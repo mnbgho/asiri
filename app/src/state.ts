@@ -366,6 +366,37 @@ export function decodeVaultBalance(root: CborValue): bigint {
   return balance;
 }
 
+/** Decode the resource address that the vault state actually carries. */
+export function decodeVaultResourceAddress(root: CborValue): string {
+  const find = (node: CborValue): string | null => {
+    if (Array.isArray(node)) {
+      if (
+        node.length >= 2 &&
+        node[0] instanceof Tagged &&
+        node[0].tag === 131 &&
+        node[0].value instanceof Uint8Array
+      )
+        return "resource_" + bytesToHex(node[0].value);
+      for (const child of node) {
+        const resource = find(child);
+        if (resource !== null) return resource;
+      }
+    } else if (node instanceof Map) {
+      for (const [key, value] of node) {
+        const resource = find(key) ?? find(value);
+        if (resource !== null) return resource;
+      }
+    } else if (node instanceof Tagged) {
+      return find(node.value);
+    }
+    return null;
+  };
+  const resource = find(root);
+  if (resource === null)
+    throw new Error("No resource address found in the vault substate");
+  return resource;
+}
+
 /**
  * The owner public key of an account component. The wallet's
  * account list gives the component address only, but the account

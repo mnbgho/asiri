@@ -22,6 +22,11 @@ const TENDER = "component_" + "cc".repeat(32);
 const CIRCLE_TEMPLATE = "template_" + "dd".repeat(32);
 const TENDER_TEMPLATE = "template_" + "ee".repeat(32);
 const TOKEN = "resource_" + "01".repeat(32);
+const FEE_VAULT = "vault_" + "ff".repeat(32);
+const FEE_INPUTS = [
+  { substate_id: ACCOUNT, version: null },
+  { substate_id: FEE_VAULT, version: null },
+];
 
 const RULES = {
   specificationHash: "07".repeat(32),
@@ -144,6 +149,7 @@ describe("instruction builders", () => {
 class MockProvider implements TariProvider {
   calls: string[] = [];
   polls = 0;
+  createParams: unknown = null;
   async request(args: { method: string; params?: unknown }): Promise<unknown> {
     this.calls.push(args.method);
     switch (args.method) {
@@ -151,7 +157,10 @@ class MockProvider implements TariProvider {
         return [ACCOUNT];
       case "tari_getNetwork":
         return "esmeralda";
+      case "tari_getCapabilities":
+        return { exactInputSelection: true };
       case "tari_createTransactionRequest":
+        this.createParams = args.params;
         return { requestId: "req-1" };
       case "tari_getTransactionRequest":
         this.polls++;
@@ -176,11 +185,16 @@ describe("wallet submit flow", () => {
     wallet.pollMs = 1; // ride the poll loop at full speed, not real time
     await wallet.connect();
     expect(wallet.account).toBe(ACCOUNT);
-    const out = await wallet.submit(buildClose(), 2000000);
+    const out = await wallet.submit(buildClose(), FEE_INPUTS, 2000000);
     expect(out.result).toEqual({ ok: true });
+    expect(mock.createParams).toMatchObject({
+      inputs: FEE_INPUTS,
+      maxFee: "2000000",
+    });
     expect(mock.calls).toEqual([
       "tari_requestAccounts",
       "tari_getNetwork",
+      "tari_getCapabilities",
       "tari_createTransactionRequest",
       "tari_getTransactionRequest",
       "tari_getTransactionRequest",
@@ -193,7 +207,9 @@ describe("wallet submit flow", () => {
     let polls = 0;
     let submits = 0;
     const slow: TariProvider = {
-      async request(args: { method: string }) {
+      async request(args: { method: string; params?: unknown }) {
+        if (args.method === "tari_getCapabilities")
+          return { exactInputSelection: true };
         if (args.method === "tari_createTransactionRequest")
           return { requestId: "req-3" };
         if (args.method === "tari_getTransactionRequest") {
@@ -212,14 +228,16 @@ describe("wallet submit flow", () => {
     (globalThis as { window?: unknown }).window = { tari: slow };
     const wallet = new Wallet();
     wallet.pollMs = 1;
-    const out = await wallet.submit(buildClose());
+    const out = await wallet.submit(buildClose(), FEE_INPUTS);
     expect(out.result).toEqual({ ok: true });
     expect(submits).toBe(1);
   });
 
   it("throws the wallet's message on rejection", async () => {
     const rejecting: TariProvider = {
-      async request(args: { method: string }) {
+      async request(args: { method: string; params?: unknown }) {
+        if (args.method === "tari_getCapabilities")
+          return { exactInputSelection: true };
         if (args.method === "tari_createTransactionRequest")
           return { requestId: "req-2" };
         if (args.method === "tari_getTransactionRequest")
@@ -229,7 +247,7 @@ describe("wallet submit flow", () => {
     };
     (globalThis as { window?: unknown }).window = { tari: rejecting };
     const wallet = new Wallet();
-    await expect(wallet.submit(buildClose())).rejects.toThrow("user declined");
+    await expect(wallet.submit(buildClose(), FEE_INPUTS)).rejects.toThrow("user declined");
   });
 });
 

@@ -19,7 +19,7 @@ import {
   txCalls,
 } from "../src/finalize";
 import type { Indexer } from "../src/indexer";
-import type { TariProvider } from "../src/wallet";
+import type { SubstateRequirement, TariProvider } from "../src/wallet";
 
 const ACCOUNT = "component_" + "aa".repeat(32);
 const CIRCLE = "component_" + "bb".repeat(32);
@@ -384,12 +384,14 @@ describe("confirmAction", () => {
 // provider shape as the wallet submit flow tests.
 class MockProvider implements TariProvider {
   polls = 0;
-  async request(args: { method: string }): Promise<unknown> {
+  async request(args: { method: string; params?: unknown }): Promise<unknown> {
     switch (args.method) {
       case "tari_requestAccounts":
         return [ACCOUNT];
       case "tari_getNetwork":
         return "esmeralda";
+      case "tari_getCapabilities":
+        return { exactInputSelection: true };
       case "tari_createTransactionRequest":
         return { requestId: "req-1" };
       case "tari_getTransactionRequest":
@@ -431,6 +433,12 @@ async function connectedApp(): Promise<App> {
   // sit close to the runner's per-test timeout under load.
   app.wallet.pollMs = 1;
   await app.wallet.connect();
+  (app as unknown as {
+    resolveFeeInputs: () => Promise<SubstateRequirement[]>;
+  }).resolveFeeInputs = async () => [
+    { substate_id: ACCOUNT, version: null },
+    { substate_id: "vault_" + "ff".repeat(32), version: null },
+  ];
   return app;
 }
 

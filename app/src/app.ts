@@ -14,9 +14,15 @@ import { Indexer, NETWORKS, defaultNetwork, type NetworkName } from "./indexer";
 import {
   decodeAccountOwnerKey,
   decodeVaultBalance,
+  decodeVaultResourceAddress,
   findAccountVault,
 } from "./state";
-import { Wallet, networkMatch, type Instruction } from "./wallet";
+import {
+  Wallet,
+  networkMatch,
+  type Instruction,
+  type SubstateRequirement,
+} from "./wallet";
 
 const store = {
   get(k: string): string | null {
@@ -104,6 +110,56 @@ export class App {
         `Your wallet is on ${net}, but the app is set to ${NETWORKS[this.network].label}. Switch the network in your wallet, or switch the app's network, then try again.`,
       );
     }
+  }
+
+  private async resolveFeeInputs(): Promise<SubstateRequirement[]> {
+    const account = this.wallet.account;
+    if (!account)
+      throw new Error("Connect a wallet before preparing fee-payer inputs.");
+    const accountState = await this.indexer.substate(account);
+    if (!accountState)
+      throw new Error(
+        "The connected fee-payer account is not live on the selected network; nothing was requested.",
+      );
+    const ownerKey = decodeAccountOwnerKey(accountState.value);
+    if (this.myKey && this.myKey.toLowerCase() !== ownerKey)
+      throw new Error(
+        "The connected account owner does not match the app identity; nothing was requested.",
+      );
+    const vault = findAccountVault(accountState.value, TARI_TOKEN);
+    if (!vault)
+      throw new Error(
+        "The connected account has no native-TARI fee vault; nothing was requested.",
+      );
+    const vaultState = await this.indexer.substate(vault);
+    if (!vaultState)
+      throw new Error(
+        "The connected account's native-TARI fee vault is not live; nothing was requested.",
+      );
+    if (decodeVaultResourceAddress(vaultState.value) !== TARI_TOKEN)
+      throw new Error(
+        "The connected account's fee vault is not the native-TARI vault; nothing was requested.",
+      );
+    return [
+      { substate_id: account, version: null },
+      { substate_id: vault, version: null },
+    ];
+  }
+
+  private async submitWithFeeInputs(
+    instructions: Instruction[],
+    maxFeeMicroTari: number,
+  ): Promise<{ result: unknown }> {
+    const inputs = await this.resolveFeeInputs();
+    return this.wallet.submit(instructions, inputs, maxFeeMicroTari);
+  }
+
+  async submitWalletInstructions(
+    instructions: Instruction[],
+    maxFeeMicroTari = 2_000_000,
+  ): Promise<{ result: unknown }> {
+    await this.guardWalletNetwork();
+    return this.submitWithFeeInputs(instructions, maxFeeMicroTari);
   }
 
   /**
@@ -200,7 +256,7 @@ export class App {
     if (this.wallet.account) calls.delete(this.wallet.account);
     const watch = [...calls.keys()][0];
     const before = watch ? await this.snapshotTxIds(watch) : null;
-    const { result } = await this.wallet.submit(instructions, maxFeeMicroTari);
+    const { result } = await this.submitWithFeeInputs(instructions, maxFeeMicroTari);
     if (!watch || !before) {
       await this.deriveIdentity();
       return { result, outcome: UNCONFIRMED };
