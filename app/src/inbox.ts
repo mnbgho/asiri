@@ -45,13 +45,23 @@ export function personalItems(args: {
   const items: InboxItem[] = [];
   const name = (t: TenderComponentState) => t.circleName || "A sealed tender";
 
-  // Reveals due: a saved bid whose tender sits in its reveal
-  // window with the commitment still sealed. The bid's own
-  // identity is the key that must sign the reveal; when a key
-  // is connected, only its bids are listed.
+  // Reveals due: a saved bid whose tender can reveal, with the
+  // commitment still sealed. The template accepts a reveal
+  // while the tender is Open or Reveal, from the bid deadline
+  // up to the reveal deadline, so an Open tender past its bid
+  // deadline is due here too: that is the first reveal. An
+  // epoch of 0 means the current epoch could not be read, so
+  // the state alone decides and the seller screen re-checks
+  // the window before any submit. The bid's own identity is
+  // the key that must sign the reveal; when a key is
+  // connected, only its bids are listed.
   for (const bid of bids) {
     const t = tenders.get(bid.tender);
-    if (!t || t.state !== "Reveal") continue;
+    if (!t || (t.state !== "Open" && t.state !== "Reveal")) continue;
+    if (epoch > 0) {
+      if (t.bidDeadline !== null && epoch < t.bidDeadline) continue;
+      if (t.revealDeadline !== null && epoch >= t.revealDeadline) continue;
+    }
     if (me && bid.identity !== me) continue;
     const commitment = t.commitments.find((c) => c.commitment === bid.commitment);
     if (!commitment || commitment.revealed) continue;

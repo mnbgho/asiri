@@ -128,3 +128,7 @@ The Heartland Provisions Circle is live on mainnet at `component_46237d52379c5d9
 The web app is live at https://asiri-libg.netlify.app and defaults to mainnet, with an esmeralda switch kept. Its results page carries the esmeralda season's recorded receipts and the mainnet season's records, each under its own network's view. Every tender on either network can be re-checked with the verifier above.
 
 </details>
+
+## What Is Next
+
+Asiri works today, and the work continues. The next steps are a circle run by people outside the project on a real purchase, a smoother journey from first bid to final payment, evidence that is easy to reproduce, safer salt handling with backup and recovery that survives a lost browser, and deeper testing of disputes and overrides followed by an independent security review. The full plan, with dates by month, is in [ROADMAP.md](ROADMAP.md).

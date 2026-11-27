@@ -1,7 +1,7 @@
 // Plain-language address errors and the seller desk's reveal
 // pre-checks. A pasted address that is not a tender or a circle
 // must be described in plain words, never in decoder vocabulary,
-// and a reveal must be refused before submission when the wallet
+// and a reveal must be refused before sending when the wallet
 // is not connected or the tender is outside its reveal window.
 import { describe, expect, it } from "vitest";
 import type { App } from "../src/app";
@@ -137,6 +137,7 @@ function fakeApp(opts: {
   account: string | null;
   substate: CborValue | null;
   epoch?: number;
+  epochError?: Error;
   substateError?: Error;
 }): App {
   return {
@@ -146,13 +147,16 @@ function fakeApp(opts: {
         if (opts.substateError) throw opts.substateError;
         return opts.substate ? { version: 0, value: opts.substate } : null;
       },
-      epoch: async () => opts.epoch ?? 0,
+      epoch: async () => {
+        if (opts.epochError) throw opts.epochError;
+        return opts.epoch ?? 0;
+      },
     },
   } as unknown as App;
 }
 
 describe("checkRevealable", () => {
-  it("refuses before submission when the wallet is not connected", async () => {
+  it("refuses before sending when the wallet is not connected", async () => {
     const app = fakeApp({ account: null, substate: tenderRoot(2, 20) });
     await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
       "Connect your wallet first",
@@ -184,14 +188,65 @@ describe("checkRevealable", () => {
     );
   });
 
-  it("refuses when the tender is not in its reveal state", async () => {
+  it("refuses when the tender is in no revealable state", async () => {
     const app = fakeApp({
       account: COMPONENT,
-      substate: tenderRoot(1, 20), // Open
-      epoch: 12,
+      substate: tenderRoot(0, 20), // Draft
+      epoch: 16,
     });
     await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
       "not in its reveal window",
+    );
+  });
+
+  it("refuses an Open tender before its bid deadline", async () => {
+    const app = fakeApp({
+      account: COMPONENT,
+      substate: tenderRoot(1, 20), // Open, bids close at 15
+      epoch: 12,
+    });
+    await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
+      "The reveal window has not opened yet",
+    );
+  });
+
+  it("refuses a Reveal tender before its bid deadline", async () => {
+    const app = fakeApp({
+      account: COMPONENT,
+      substate: tenderRoot(2, 20), // Reveal, bids close at 15
+      epoch: 14,
+    });
+    await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
+      "The reveal window has not opened yet",
+    );
+  });
+
+  it("passes an Open tender at its bid deadline, the first reveal", async () => {
+    const app = fakeApp({
+      account: COMPONENT,
+      substate: tenderRoot(1, 20), // Open, bids close at 15
+      epoch: 15,
+    });
+    await expect(checkRevealable(app, COMPONENT)).resolves.toBeUndefined();
+  });
+
+  it("passes an Open tender inside the reveal window", async () => {
+    const app = fakeApp({
+      account: COMPONENT,
+      substate: tenderRoot(1, 20), // Open, bids close at 15
+      epoch: 19,
+    });
+    await expect(checkRevealable(app, COMPONENT)).resolves.toBeUndefined();
+  });
+
+  it("refuses at exactly the reveal deadline epoch", async () => {
+    const app = fakeApp({
+      account: COMPONENT,
+      substate: tenderRoot(2, 20), // Reveal, deadline 20
+      epoch: 20,
+    });
+    await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
+      "The reveal window closed at epoch 20",
     );
   });
 
@@ -210,8 +265,22 @@ describe("checkRevealable", () => {
     const app = fakeApp({
       account: COMPONENT,
       substate: tenderRoot(2, 20),
-      epoch: 20,
+      epoch: 19,
     });
     await expect(checkRevealable(app, COMPONENT)).resolves.toBeUndefined();
+  });
+
+  it("refuses the submit when the epoch cannot be read", async () => {
+    const app = fakeApp({
+      account: COMPONENT,
+      substate: tenderRoot(2, 20),
+      epochError: new Error("the indexer did not answer in time"),
+    });
+    await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
+      "The current epoch could not be read",
+    );
+    await expect(checkRevealable(app, COMPONENT)).rejects.toThrow(
+      "The reveal was not submitted",
+    );
   });
 });

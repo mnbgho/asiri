@@ -52,9 +52,14 @@ async function readSubstatePlain(app: App, tenderAddr: string) {
 /**
  * The checks a reveal must pass before the wallet opens, in
  * the commit flow's style: a connected wallet, a tender that
- * exists on this network, the tender in its reveal state, and
- * the reveal window still open. Without them the first sign
- * of a problem was a chain rejection after signing.
+ * exists on this network, the tender in a state that can
+ * reveal, and the current epoch inside the reveal window.
+ * The template accepts a reveal while the tender is Open or
+ * Reveal, from the bid deadline up to the reveal deadline,
+ * and only a reveal flips Open to Reveal. The checks match
+ * it exactly, so the first reveal can happen from this
+ * screen instead of nowhere. Without these checks the first
+ * sign of a problem was a chain rejection after signing.
  */
 export async function checkRevealable(app: App, tenderAddr: string): Promise<void> {
   if (!app.wallet.account) throw new Error("Connect your wallet first");
@@ -67,18 +72,28 @@ export async function checkRevealable(app: App, tenderAddr: string): Promise<voi
   } catch (e) {
     throw new Error(plainAddressError(tenderAddr, e));
   }
-  if (t.state !== "Reveal")
+  if (t.state !== "Open" && t.state !== "Reveal")
     throw new Error(
-      `This tender is ${t.state.toLowerCase()}, not in its reveal window. A bid can only be revealed while the tender is in its reveal state.`,
+      `This tender is ${t.state.toLowerCase()}, not in its reveal window. A bid can only be revealed while the tender is in its open or reveal state.`,
     );
-  if (t.revealDeadline !== null) {
-    let epoch = 0;
+  // The window is read from the chain's own clock. A failed
+  // epoch read refuses the submit instead of guessing: the
+  // seller is told plainly, and no fee is spent on a reveal
+  // the chain would reject.
+  if (t.bidDeadline !== null || t.revealDeadline !== null) {
+    let epoch: number;
     try {
       epoch = await app.indexer.epoch();
     } catch {
-      /* the state check above stands on its own */
+      throw new Error(
+        "The current epoch could not be read, so the reveal window cannot be checked. The reveal was not submitted. Try again when the network answers.",
+      );
     }
-    if (epoch && epoch > t.revealDeadline)
+    if (t.bidDeadline !== null && epoch < t.bidDeadline)
+      throw new Error(
+        `The reveal window has not opened yet. Bids close at epoch ${t.bidDeadline}.`,
+      );
+    if (t.revealDeadline !== null && epoch >= t.revealDeadline)
       throw new Error(
         `The reveal window closed at epoch ${t.revealDeadline}. This bid stays sealed, and its bond follows the tender's outcome.`,
       );

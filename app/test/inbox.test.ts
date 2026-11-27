@@ -107,6 +107,7 @@ function run(args: {
   bids?: SavedBid[];
   tenders?: [string, TenderComponentState][];
   circles?: [string, CircleComponentState][];
+  epoch?: number;
 }): InboxItem[] {
   return personalItems({
     me: args.me === undefined ? ME : args.me,
@@ -114,7 +115,7 @@ function run(args: {
     tenders: new Map(args.tenders ?? []),
     circles: new Map(args.circles ?? []),
     network: "esmeralda",
-    epoch: 100,
+    epoch: args.epoch ?? 100,
   });
 }
 
@@ -129,10 +130,67 @@ describe("personalItems: reveals due", () => {
   });
 
   it("lists a saved bid whose reveal window is open", () => {
-    const items = run({ bids: [bid()], tenders: [[TENDER, sealed]] });
+    const items = run({ bids: [bid()], tenders: [[TENDER, sealed]], epoch: 93 });
     expect(kinds(items)).toEqual(["reveal"]);
     expect(items[0].dest).toBe("#/app/seller");
     expect(items[0].detail).toContain("epoch 94");
+  });
+
+  it("lists the first reveal on an Open tender past its bid deadline", () => {
+    const open = tender({
+      state: "Open",
+      commitments: [
+        { seller: ME, commitment: "ff".repeat(32), epoch: 91, revealed: false, bond: "Held" },
+      ],
+    });
+    const items = run({ bids: [bid()], tenders: [[TENDER, open]], epoch: 93 });
+    expect(kinds(items)).toEqual(["reveal"]);
+    expect(items[0].dest).toBe("#/app/seller");
+  });
+
+  it("lists an Open tender at its bid deadline", () => {
+    const open = tender({
+      state: "Open",
+      commitments: [
+        { seller: ME, commitment: "ff".repeat(32), epoch: 91, revealed: false, bond: "Held" },
+      ],
+    });
+    expect(kinds(run({ bids: [bid()], tenders: [[TENDER, open]], epoch: 92 }))).toEqual([
+      "reveal",
+    ]);
+  });
+
+  it("skips an Open tender before its bid deadline", () => {
+    const open = tender({
+      state: "Open",
+      commitments: [
+        { seller: ME, commitment: "ff".repeat(32), epoch: 91, revealed: false, bond: "Held" },
+      ],
+    });
+    expect(run({ bids: [bid()], tenders: [[TENDER, open]], epoch: 91 })).toEqual([]);
+  });
+
+  it("skips a reveal whose window has closed", () => {
+    expect(run({ bids: [bid()], tenders: [[TENDER, sealed]], epoch: 94 })).toEqual([]);
+    const open = tender({
+      state: "Open",
+      commitments: [
+        { seller: ME, commitment: "ff".repeat(32), epoch: 91, revealed: false, bond: "Held" },
+      ],
+    });
+    expect(run({ bids: [bid()], tenders: [[TENDER, open]], epoch: 94 })).toEqual([]);
+  });
+
+  it("lists on state alone when the epoch could not be read", () => {
+    const open = tender({
+      state: "Open",
+      commitments: [
+        { seller: ME, commitment: "ff".repeat(32), epoch: 91, revealed: false, bond: "Held" },
+      ],
+    });
+    expect(kinds(run({ bids: [bid()], tenders: [[TENDER, open]], epoch: 0 }))).toEqual([
+      "reveal",
+    ]);
   });
 
   it("skips a bid already revealed, and one in another state", () => {
@@ -148,7 +206,12 @@ describe("personalItems: reveals due", () => {
 
   it("lists only the connected key's bids, and any bid when no key is saved", () => {
     expect(run({ bids: [bid({ identity: OTHER })], tenders: [[TENDER, sealed]] })).toEqual([]);
-    const noKey = run({ me: null, bids: [bid({ identity: OTHER })], tenders: [[TENDER, sealed]] });
+    const noKey = run({
+      me: null,
+      bids: [bid({ identity: OTHER })],
+      tenders: [[TENDER, sealed]],
+      epoch: 93,
+    });
     expect(kinds(noKey)).toEqual(["reveal"]);
   });
 });
