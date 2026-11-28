@@ -27,7 +27,8 @@ The claim, stated exactly: the winner is the lowest valid revealed bid under the
 - **7 tenders on mainnet**, against the Heartland Provisions Circle: a plain award, a tie, an override, a dispute, an expiry, a ten-seller tender, and one tender run purely to be attacked.
 - **90 of 90 checks passed**, recomputed by two independent verifiers, the standalone script and the verifier inside the app, with identical readings on every tender.
 - **18 attacks rejected by the chain**, each recorded in the chain's own words: duplicate bids, wrong salts, wrong prices, late bids, a rules rewrite after the lock, an override with no rationale, an override picking a bid nobody revealed, and double payment claims after settlement.
-- **465 tests** across the engine, the app, and the standalone verifier.
+- **504 tests** across the engine, the app, and the standalone verifier.
+- **Two independent testers ran the full loop through the live app.** A buying circle outside the project ran a tender on mainnet from the first bid to the final payment, through the app, with its own keys: circle created, tender created and locked, bid committed and revealed, award, delivery, confirmation, payment, receipt, bond return, and escrow refund, all closed on chain.
 - A **7-tender season on the Esmeralda testnet** ran first, with the same full verification.
 
 Full records, tender by tender, with transactions, fees, and verifier counts: [`evidence/mainnet.md`](evidence/mainnet.md) and [`evidence/esmeralda.md`](evidence/esmeralda.md).
@@ -43,7 +44,7 @@ pip install asiri-verify
 asiri-verify component_84e25948c447c3ee437e783fc29b4bfebf18fb2cc1bee1c0ed41598113ad37f2 --network mainnet
 ```
 
-That is the gate tender from the mainnet season. A live re-run today reads 12 of 13, with the reveal recomputation as could not be read: the mainnet indexer no longer serves the reveal transaction bodies it served when the shipped receipts were produced at 13 of 13. The receipts in the app carry the full run.
+That is the gate tender from the mainnet season. A live re-run today reads 11 of 13, with the reveal recomputation as could not be read: the mainnet indexer no longer serves the reveal transaction bodies it served when the shipped receipts were produced at 13 of 13. The receipts in the app carry the full run.
 
 Run the app locally:
 
@@ -131,4 +132,4 @@ The web app is live at https://asiri-xi.vercel.app and defaults to mainnet, with
 
 ## What Is Next
 
-Asiri works today, and the work continues. The next steps are a circle run by people outside the project on a real purchase, a smoother journey from first bid to final payment, evidence that is easy to reproduce, safer salt handling with backup and recovery that survives a lost browser, and deeper testing of disputes and overrides followed by an independent security review. The full plan, with dates by month, is in [ROADMAP.md](ROADMAP.md).
+Asiri works today, and the work continues. A circle run by people outside the project is done: two independent testers ran the full loop through the live app on mainnet, from the first bid to the final payment, and it closed on chain. The next steps are a smoother journey from first bid to final payment, evidence that is easy to reproduce, safer salt handling with backup and recovery that survives a lost browser, and deeper testing of disputes and overrides followed by an independent security review. The full plan, with dates by month, is in [ROADMAP.md](ROADMAP.md).

@@ -7,7 +7,8 @@ Asiri is live on Tari mainnet today. The app is at https://asiri-xi.vercel.app. 
 - Seven tenders have settled on mainnet against the Heartland Provisions Circle. Six ran as a season. The seventh ran purely to be attacked.
 - The shipped receipts carry 90 of 90 checks. Two independent verifiers recomputed them with identical readings on every tender.
 - Eighteen attacks were refused by the chain. Each refusal is recorded in the chain's own words.
-- 465 tests pass from a clean checkout. 51 cover the engine. 342 cover the app. 72 cover the standalone verifier.
+- 504 tests pass from a clean checkout. 51 cover the engine. 381 cover the app. 72 cover the standalone verifier.
+- A real circle, run by people outside the project, is done. Two independent testers ran a buying circle on mainnet through the live app, from the first bid to the final payment, with their own keys. The tender closed on chain: payment, receipt, bond return, and escrow refund all landed.
 - Both mainnet templates match the hashes pinned in this repo. The match was checked on both public indexers. A fresh rebuild reproduces the template definition exactly.
 - A seven-tender season ran on the Esmeralda testnet first, with the same full verification. The full record is in [evidence/mainnet.md](evidence/mainnet.md) and [evidence/esmeralda.md](evidence/esmeralda.md).
 
@@ -15,15 +16,9 @@ Asiri is live on Tari mainnet today. The app is at https://asiri-xi.vercel.app. 
 
 ### December
 
-**A real circle, run by people outside the project.**
-
-What changes: a group that is not part of this project runs a circle with its own keys and makes a real purchase through the app, from the first bid to the final payment.
-Why: it shows the product works for the people it was built for.
-
 **The full journey, made smooth end to end.**
 
-What changes: the app guides a circle from the first bid to the final payment without a step that cannot be finished. The first reveal works from the app. Confirmation after each step reads correctly on mainnet.
-Today the first reveal of a tender cannot be done from the app. The app only offers a reveal once the tender is already in its reveal state, and only a reveal moves it there. The change makes the app accept the tender in its open state once bids have closed, exactly as the template does. Today the app can also show "unconfirmed" after a step that landed, because the indexer no longer serves the transaction bodies the app reads to confirm. The change confirms by reading the change on chain, and says plainly which way the confirmation was reached.
+What changes: the app guides a circle from the first bid to the final payment without a step that cannot be finished. The first reveal works from the app, and confirmation after each step reads correctly on mainnet. Both are done and proven live: the first reveal of a tender now works from the app, and confirmation reads the change on chain, so a step that landed no longer shows as unconfirmed. The remaining work is polish on the journey itself.
 Why: a circle should never stall on a step it cannot see how to finish.
 
 **Evidence that is easy to reproduce.**
