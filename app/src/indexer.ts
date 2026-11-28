@@ -281,6 +281,39 @@ export class Indexer {
     return this.getJson(`/transactions/${id}`);
   }
 
+  /**
+   * Recent transactions, newest first. Each entry is wrapped
+   * to the same shape the single-transaction body endpoint
+   * serves, so the seal, the instructions and the summary
+   * outcome read the same way. Best effort: the indexer holds
+   * what it observed on gossip, so a transaction can be
+   * missing here even when it committed.
+   */
+  async recentTransactions(
+    limit = 20,
+  ): Promise<{ txId: string; body: unknown }[]> {
+    const body = (await this.getJson(
+      `/transactions/recent?limit=${limit}`,
+    )) as { transactions?: unknown[] } | unknown[];
+    const raw: unknown = Array.isArray(body)
+      ? body
+      : (body as { transactions?: unknown } | null)?.transactions;
+    if (!Array.isArray(raw)) {
+      throw new MalformedResponseError("The recent list is not a list");
+    }
+    return raw.map((entry) => {
+      if (entry === null || typeof entry !== "object") {
+        throw new MalformedResponseError("malformed recent transaction entry");
+      }
+      const obj = entry as Record<string, unknown>;
+      const txId = obj.transaction_id ?? obj.tx_id ?? "";
+      if (typeof txId !== "string" || !txId) {
+        throw new MalformedResponseError("malformed recent transaction entry");
+      }
+      return { txId, body: { transaction: entry } };
+    });
+  }
+
   explorerTx(id: string): string {
     return `${this.cfg.explorer}/tx/${id}`;
   }

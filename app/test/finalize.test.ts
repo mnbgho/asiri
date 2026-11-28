@@ -198,6 +198,7 @@ interface FakeIndexerScript {
   bodies: Record<string, unknown>;
   results: Record<string, unknown>;
   versions?: number[];
+  recent?: { txId: string; body: unknown }[];
 }
 
 function fakeIndexer(script: FakeIndexerScript): Indexer {
@@ -226,6 +227,7 @@ function fakeIndexer(script: FakeIndexerScript): Indexer {
       if (version === undefined) throw new Error("not found");
       return { version, value: [] };
     },
+    recentTransactions: async () => script.recent ?? [],
   } as unknown as Indexer;
 }
 
@@ -242,6 +244,41 @@ function bodyWithSummary(outcome: string, rejected: string | null): unknown {
 }
 
 const FAST = { pollMs: 1, eventTries: 4, resultTries: 3 };
+
+/** A recent-list entry body in the wrapped shape the indexer
+ * serves: the transaction, its seal, and its summary. */
+function recentTxBody(
+  component: string,
+  method: string,
+  sealKey: string,
+  outcome: string,
+): unknown {
+  return {
+    transaction: {
+      transaction_id: NEW_TX,
+      transaction: {
+        V2: {
+          seal_signature: { public_key: sealKey, signature: "00" },
+          body: {
+            transaction: {
+              instructions: [
+                {
+                  CallMethod: {
+                    call: { Address: component },
+                    method,
+                    args: [],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+      summary: { outcome, finalized_at: "2026-11-28 04:54:18.0" },
+      rejected_reason: null,
+    },
+  };
+}
 
 describe("parseBodySummary", () => {
   it("reads a Commit outcome from the mainnet body summary", () => {
@@ -498,6 +535,78 @@ describe("confirmAction", () => {
       { ...FAST, beforeVersion: 7 },
     );
     expect(outcome).toEqual({ kind: "unconfirmed", txId: null, reason: null });
+  });
+
+  it("names the transaction from the recent list when the event feed is stale", async () => {
+    // The feed never shows the new transaction, but the recent
+    // list does, newest first, with a Commit summary: the
+    // receipt gets its link.
+    const myKey = "ab".repeat(32);
+    const body = recentTxBody(TENDER, "close_reveal", myKey, "Commit");
+    const indexer = fakeIndexer({
+      events: [[{ txId: OLD_TX, topic: "std.component.updated" }]],
+      bodies: { [NEW_TX]: body },
+      results: {},
+      recent: [{ txId: NEW_TX, body }],
+    });
+    const outcome = await confirmAction(
+      indexer,
+      TENDER,
+      new Set(["close_reveal"]),
+      new Set([OLD_TX]),
+      { ...FAST, signer: myKey },
+    );
+    expect(outcome).toEqual({ kind: "confirmed", txId: NEW_TX, reason: null });
+  });
+
+  it("skips a fee-only recent transaction and takes the commit", async () => {
+    // Two attempts at the same call: the first took only the
+    // fee, the second committed. The newest commit is the one
+    // that counts.
+    const myKey = "ab".repeat(32);
+    const FAILED_TX = "44".repeat(32);
+    const goodBody = recentTxBody(TENDER, "close_reveal", myKey, "Commit");
+    const failedBody = recentTxBody(TENDER, "close_reveal", myKey, "FeeIntentCommit");
+    const indexer = fakeIndexer({
+      events: [[{ txId: OLD_TX, topic: "std.component.updated" }]],
+      bodies: { [NEW_TX]: goodBody, [FAILED_TX]: failedBody },
+      results: {},
+      recent: [
+        { txId: NEW_TX, body: goodBody },
+        { txId: FAILED_TX, body: failedBody },
+      ],
+    });
+    const outcome = await confirmAction(
+      indexer,
+      TENDER,
+      new Set(["close_reveal"]),
+      new Set([OLD_TX]),
+      { ...FAST, signer: myKey },
+    );
+    expect(outcome).toEqual({ kind: "confirmed", txId: NEW_TX, reason: null });
+  });
+
+  it("names the transaction from the recent list after a version increase", async () => {
+    // The feed is stale and the recent list is the only place
+    // naming the transaction. The version increase proves the
+    // action landed; the recent list supplies the link.
+    const myKey = "ab".repeat(32);
+    const body = recentTxBody(TENDER, "close_reveal", myKey, "Commit");
+    const indexer = fakeIndexer({
+      events: [[{ txId: OLD_TX, topic: "std.component.updated" }]],
+      bodies: { [NEW_TX]: body },
+      results: {},
+      versions: [7, 8],
+      recent: [{ txId: NEW_TX, body }],
+    });
+    const outcome = await confirmAction(
+      indexer,
+      TENDER,
+      new Set(["close_reveal"]),
+      new Set([OLD_TX]),
+      { ...FAST, beforeVersion: 7, signer: myKey },
+    );
+    expect(outcome).toEqual({ kind: "confirmed", txId: NEW_TX, reason: null });
   });
 });
 

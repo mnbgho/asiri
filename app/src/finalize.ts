@@ -149,6 +149,49 @@ function failureReason(decision: {
     : `The chain's final decision was ${decision.decision.toLowerCase()}`;
 }
 
+/**
+ * The newest recent transaction that is this action's own and
+ * already committed: it calls one of `methods` on the
+ * component, is sealed by the signer's key when known, is not
+ * in `before` or `notMine`, and its body summary says Commit.
+ * A fee-only ending (FeeIntentCommit) is not a commit, so a
+ * failed attempt never counts as the action landing. Returns
+ * null when the recent list names no such transaction. The
+ * recent list is best effort, so a miss here is not proof
+ * the transaction does not exist.
+ */
+async function findRecentMatch(
+  indexer: Indexer,
+  component: string,
+  methods: Set<string>,
+  before: Set<string>,
+  notMine: Set<string>,
+  signer: string | null,
+): Promise<string | null> {
+  let recent: { txId: string; body: unknown }[];
+  try {
+    recent = await indexer.recentTransactions();
+  } catch {
+    return null;
+  }
+  for (const { txId, body } of recent) {
+    if (!txId || before.has(txId) || notMine.has(txId)) continue;
+    try {
+      if (!txCalls(body, component, methods)) continue;
+      if (signer && sealSigner(body) !== signer) {
+        notMine.add(txId);
+        continue;
+      }
+      const summary = parseBodySummary(body);
+      if (summary && summary.decision === "Commit") return txId;
+      notMine.add(txId);
+    } catch {
+      /* leave the candidate unchecked */
+    }
+  }
+  return null;
+}
+
 function findCalls(
   node: unknown,
   out: { address: string; method: string }[],
@@ -282,14 +325,28 @@ export async function confirmAction(
       }
     }
   }
+  if (!matched) {
+    // The event feed is stale on mainnet, but the recent list
+    // is fresh: a committed transaction of this action may
+    // already be named there.
+    matched = await findRecentMatch(
+      indexer,
+      component,
+      methods,
+      before,
+      notMine,
+      signer,
+    );
+  }
   if (!matched && beforeVersion !== null) {
     // The feed has not indexed the transaction yet. Watch the
     // component's version: a failed execution changes nothing,
     // so an increase after the submit is the action landing.
-    // A final feed read then tries to name the transaction for
-    // the receipt link; when the feed is still quiet the
-    // outcome is confirmed without a link, which is honest:
-    // the state change is the proof, the link is a nicety.
+    // A final feed and recent read then try to name the
+    // transaction for the receipt link; when both are still
+    // quiet the outcome is confirmed without a link, which is
+    // honest: the state change is the proof, the link is a
+    // nicety.
     let versionProved = false;
     for (let i = 0; i < versionTries && !matched && !versionProved; i++) {
       if (i > 0) await sleep(pollMs);
@@ -320,7 +377,17 @@ export async function confirmAction(
             }
           }
         } catch {
-          /* the feed is still unreadable; the version is the proof */
+          /* the feed is still unreadable; try the recent list */
+        }
+        if (!matched) {
+          matched = await findRecentMatch(
+            indexer,
+            component,
+            methods,
+            before,
+            notMine,
+            signer,
+          );
         }
       }
     }
