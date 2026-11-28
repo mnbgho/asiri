@@ -4,21 +4,22 @@
 // happened. The app reports each transaction's stages as
 // events (see app.ts, TxStage); this modal is the screen
 // that answers them. Waiting stages show a spinner and say
-// what is happening and how long it usually takes. Done
-// stages say the ending, link the transaction, and close
-// themselves, except a failure or an error, which stays
-// until the visitor dismisses it.
+// what is happening and how long it usually takes. A
+// confirmed transaction shows a receipt: a tick, the words
+// Transaction successful, and the transaction link. The
+// modal never closes on its own: the visitor closes it,
+// so the receipt is still there to read when they look.
 import { App, el, explorerLink, setAria } from "./app";
 import type { TxStage } from "./app";
 
 export class TxModal {
   private overlay: HTMLElement;
   private spin: HTMLElement;
+  private tick: HTMLElement;
   private title: HTMLElement;
   private msg: HTMLElement;
   private link: HTMLElement;
   private closeBtn: HTMLButtonElement;
-  private hideTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.overlay = el("div", "tx-overlay");
@@ -26,12 +27,13 @@ export class TxModal {
     const card = el("div", "tx-card");
     setAria(card, "role", "status");
     this.spin = el("div", "tx-spin");
+    this.tick = el("div", "tx-tick", "✓");
     this.title = el("div", "tx-title");
     this.msg = el("div", "tx-msg");
     this.link = el("div", "tx-link");
     this.closeBtn = el("button", "btn btn-white btn-sm tx-close", "Close");
     this.closeBtn.addEventListener("click", () => this.hide());
-    card.append(this.spin, this.title, this.msg, this.link, this.closeBtn);
+    card.append(this.spin, this.tick, this.title, this.msg, this.link, this.closeBtn);
     this.overlay.append(card);
     if (typeof document !== "undefined" && document.body) {
       document.body.append(this.overlay);
@@ -39,28 +41,24 @@ export class TxModal {
   }
 
   /** Show the stage. Waiting stages spin with no close
-   * button; done stages stop the spinner and, except a
-   * failure or an error, close themselves after a few
-   * seconds. A new stage always replaces the last, and its
-   * own timer replaces the last timer. */
+   * button. Done stages stop the spinner and show a Close
+   * button, and stay open until the visitor closes them:
+   * the receipt must still be there to read when they look,
+   * not gone because a timer ran out. A new stage always
+   * replaces the last. */
   show(app: App, detail: TxStage): void {
-    if (this.hideTimer) {
-      clearTimeout(this.hideTimer);
-      this.hideTimer = null;
-    }
     this.overlay.hidden = false;
     this.link.replaceChildren();
-    const done = (title: string, msg: string, autoHide: boolean) => {
+    const done = (title: string, msg: string) => {
       this.spin.hidden = true;
+      this.tick.hidden = true;
       this.title.textContent = title;
       this.msg.textContent = msg;
       this.closeBtn.hidden = false;
-      if (autoHide) {
-        this.hideTimer = setTimeout(() => this.hide(), 5000);
-      }
     };
     const waiting = (title: string, msg: string) => {
       this.spin.hidden = false;
+      this.tick.hidden = true;
       this.title.textContent = title;
       this.msg.textContent = msg;
       this.closeBtn.hidden = true;
@@ -81,41 +79,38 @@ export class TxModal {
       case "submitted":
         done(
           "Submitted.",
-          "The page will update by itself when the chain records it.",
-          true,
+          "Your transaction was submitted. It will show on chain once the network records it.",
         );
         break;
       case "confirmed":
-        done("Confirmed on chain.", "The page has updated.", true);
+        this.spin.hidden = true;
+        this.tick.hidden = false;
+        this.title.textContent = "Transaction successful";
+        this.msg.textContent = "Confirmed on chain.";
+        this.closeBtn.hidden = false;
         if (detail.txId) this.link.append(explorerLink(app, "tx", detail.txId));
         break;
       case "failed":
         done(
           "This transaction failed on chain.",
           detail.reason ?? "The chain did not accept it.",
-          false,
         );
         if (detail.txId) this.link.append(explorerLink(app, "tx", detail.txId));
         break;
       case "unconfirmed":
         done(
           "Submitted, still confirming.",
-          "The chain has not recorded it yet. The page will update by itself when it does.",
-          true,
+          "The chain has not confirmed it yet. Check the transaction link, or wait and the page will update.",
         );
         if (detail.txId) this.link.append(explorerLink(app, "tx", detail.txId));
         break;
       case "error":
-        done("Nothing was submitted.", detail.message, false);
+        done("Nothing was submitted.", detail.message);
         break;
     }
   }
 
   hide(): void {
-    if (this.hideTimer) {
-      clearTimeout(this.hideTimer);
-      this.hideTimer = null;
-    }
     this.overlay.hidden = true;
   }
 }

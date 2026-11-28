@@ -701,6 +701,12 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
 }
 .tx-spin[hidden] { display: none; }
 @keyframes tx-spin { to { transform: rotate(360deg); } }
+.tx-tick {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--blue); color: var(--white);
+  display: grid; place-items: center; font-size: 24px; font-weight: 500;
+}
+.tx-tick[hidden] { display: none; }
 .tx-title { font-size: 17px; font-weight: 500; }
 .tx-msg { font-size: 14px; line-height: 1.55; color: var(--mut1); }
 .tx-link { font-size: 13px; overflow-wrap: anywhere; }

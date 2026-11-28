@@ -92,16 +92,20 @@ describe("TxModal", () => {
     expect(find(modal, "tx-msg").textContent).toContain("under a minute");
   });
 
-  it("stops spinning on confirmation, links the transaction, and closes itself", () => {
+  it("shows a receipt on confirmation, with a tick and the transaction link, and stays until closed", () => {
     const modal = new TxModal();
     modal.show(fakeApp(), { stage: "confirmed", txId: "aa".repeat(32) });
     expect(find(modal, "tx-spin").hidden).toBe(true);
-    expect(find(modal, "tx-title").textContent).toBe("Confirmed on chain.");
+    expect(find(modal, "tx-tick").hidden).toBe(false);
+    expect(find(modal, "tx-title").textContent).toBe("Transaction successful");
+    expect(find(modal, "tx-msg").textContent).toBe("Confirmed on chain.");
     expect(find(modal, "tx-close").hidden).toBe(false);
     const link = find(modal, "tx-link");
     expect(link.children).toHaveLength(1);
     expect(link.children[0].href).toContain("aa".repeat(32));
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(60000);
+    expect(find(modal, "tx-overlay").hidden).toBe(false);
+    find(modal, "tx-close").click();
     expect(find(modal, "tx-overlay").hidden).toBe(true);
   });
 
@@ -129,6 +133,17 @@ describe("TxModal", () => {
     });
     expect(find(modal, "tx-title").textContent).toBe("Nothing was submitted.");
     expect(find(modal, "tx-msg").textContent).toContain("declined");
+    vi.advanceTimersByTime(60000);
+    expect(find(modal, "tx-overlay").hidden).toBe(false);
+  });
+
+  it("hides the tick while waiting and stays open once submitted", () => {
+    const modal = new TxModal();
+    modal.show(fakeApp(), { stage: "wallet" });
+    expect(find(modal, "tx-tick").hidden).toBe(true);
+    modal.show(fakeApp(), { stage: "submitted" });
+    expect(find(modal, "tx-title").textContent).toBe("Submitted.");
+    expect(find(modal, "tx-tick").hidden).toBe(true);
     vi.advanceTimersByTime(60000);
     expect(find(modal, "tx-overlay").hidden).toBe(false);
   });
