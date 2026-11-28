@@ -340,7 +340,16 @@ export class App {
     if (this.wallet.account) calls.delete(this.wallet.account);
     const watch = [...calls.keys()][0];
     const before = watch ? await this.snapshotTxIds(watch) : null;
-    const beforeVersion = watch ? await this.snapshotVersion(watch) : null;
+    // The version of every component this action touches,
+    // read before submitting. An action can move a different
+    // component than the one it was called on (a refund is
+    // called on the circle, only the tender's version moves),
+    // so watching one component alone can never prove it.
+    const beforeVersions = new Map<string, number>();
+    for (const addr of calls.keys()) {
+      const version = await this.snapshotVersion(addr);
+      if (version !== null) beforeVersions.set(addr, version);
+    }
     dispatchTxStage({ stage: "wallet" });
     let result: unknown;
     try {
@@ -360,10 +369,10 @@ export class App {
     dispatchTxStage({ stage: "confirming" });
     const outcome = await confirmAction(this.indexer, watch, calls.get(watch)!, before, {
       ...confirmOpts,
-      // The version before the submit, so the confirmation can
+      // The versions before the submit, so the confirmation can
       // prove the action landed even when the event feed has
       // not indexed it yet.
-      beforeVersion,
+      beforeVersions,
       // The derived key is what seals this account's
       // transactions, so it can tell the action's own
       // transaction apart from another actor's identical call.

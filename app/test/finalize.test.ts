@@ -198,12 +198,13 @@ interface FakeIndexerScript {
   bodies: Record<string, unknown>;
   results: Record<string, unknown>;
   versions?: number[];
+  versionsByComponent?: Record<string, number[]>;
   recent?: { txId: string; body: unknown }[];
 }
 
 function fakeIndexer(script: FakeIndexerScript): Indexer {
   let eventCall = 0;
-  let versionCall = 0;
+  const versionCalls: Record<string, number> = {};
   return {
     events: async () => {
       const page = script.events[Math.min(eventCall, script.events.length - 1)];
@@ -220,10 +221,19 @@ function fakeIndexer(script: FakeIndexerScript): Indexer {
       if (!result) throw new Error("not found");
       return result;
     },
-    substate: async () => {
+    substate: async (address: string) => {
+      const byComponent = script.versionsByComponent?.[address];
+      if (byComponent) {
+        const call = versionCalls[address] ?? 0;
+        versionCalls[address] = call + 1;
+        const version = byComponent[Math.min(call, byComponent.length - 1)];
+        if (version === undefined) throw new Error("not found");
+        return { version, value: [] };
+      }
       const versions = script.versions ?? [];
-      const version = versions[Math.min(versionCall, versions.length - 1)];
-      versionCall++;
+      const call = versionCalls[""] ?? 0;
+      versionCalls[""] = call + 1;
+      const version = versions[Math.min(call, versions.length - 1)];
       if (version === undefined) throw new Error("not found");
       return { version, value: [] };
     },
@@ -404,7 +414,12 @@ describe("confirmAction", () => {
     });
   });
 
-  it("requires the seal of the signer's own key when the key is known", async () => {
+  it("prefers the signer's seal but still accepts a differently sealed transaction", async () => {
+    // Proven live 2026-11-28: the seal key is not the owner
+    // key, so a seal mismatch must not reject the submitter's
+    // own transaction. The signer's seal is preferred when
+    // both are present; a differently sealed transaction still
+    // counts as the newest new candidate.
     const myKey = "ab".repeat(32);
     const otherKey = "cd".repeat(32);
     const events = [
@@ -418,15 +433,14 @@ describe("confirmAction", () => {
       bodies: { [NEW_TX]: sealedTxBody(TENDER, "close_reveal", otherKey) },
       results: { [NEW_TX]: COMMIT_RESULT },
     });
-    const notMine = await confirmAction(
+    const foreign = await confirmAction(
       foreignSealed,
       TENDER,
       new Set(["close_reveal"]),
       new Set([OLD_TX]),
       { ...FAST, signer: myKey },
     );
-    expect(notMine.kind).toBe("unconfirmed");
-    expect(notMine.txId).toBeNull();
+    expect(foreign).toEqual({ kind: "confirmed", txId: NEW_TX, reason: null });
 
     const ownSealed = fakeIndexer({
       events,
@@ -515,7 +529,7 @@ describe("confirmAction", () => {
       TENDER,
       new Set(["close_reveal"]),
       new Set([OLD_TX]),
-      { ...FAST, beforeVersion: 7 },
+      { ...FAST, beforeVersions: new Map([[TENDER, 7]]) },
     );
     expect(outcome).toEqual({ kind: "confirmed", txId: null, reason: null });
   });
@@ -532,7 +546,7 @@ describe("confirmAction", () => {
       TENDER,
       new Set(["close_reveal"]),
       new Set([OLD_TX]),
-      { ...FAST, beforeVersion: 7 },
+      { ...FAST, beforeVersions: new Map([[TENDER, 7]]) },
     );
     expect(outcome).toEqual({ kind: "unconfirmed", txId: null, reason: null });
   });
@@ -604,9 +618,67 @@ describe("confirmAction", () => {
       TENDER,
       new Set(["close_reveal"]),
       new Set([OLD_TX]),
-      { ...FAST, beforeVersion: 7, signer: myKey },
+      { ...FAST, beforeVersions: new Map([[TENDER, 7]]), signer: myKey },
     );
     expect(outcome).toEqual({ kind: "confirmed", txId: NEW_TX, reason: null });
+  });
+
+  it("matches a transaction sealed by a different key than the owner key", async () => {
+    // Proven live 2026-11-28: a refund sealed by d27cad87...
+    // from an account owned by 5c6891e1.... The seal key is
+    // not the owner key, so a seal mismatch must not reject
+    // the submitter's own transaction. The newest new
+    // transaction calling the action's methods still counts.
+    const myKey = "ab".repeat(32);
+    const otherKey = "cd".repeat(32);
+    const body = recentTxBody(TENDER, "close_reveal", otherKey, "Commit");
+    const indexer = fakeIndexer({
+      events: [[{ txId: OLD_TX, topic: "std.component.updated" }]],
+      bodies: { [NEW_TX]: body },
+      results: {},
+      recent: [{ txId: NEW_TX, body }],
+    });
+    const outcome = await confirmAction(
+      indexer,
+      TENDER,
+      new Set(["close_reveal"]),
+      new Set([OLD_TX]),
+      { ...FAST, signer: myKey },
+    );
+    expect(outcome).toEqual({ kind: "confirmed", txId: NEW_TX, reason: null });
+  });
+
+  it("confirms from a version increase on a touched component that is not the watched one", async () => {
+    // A refund is called on the circle, but only the tender's
+    // version moves (the circle stays at 1). The version route
+    // must watch every touched component, not just the one the
+    // action was called on.
+    const CIRCLE = "component_" + "11".repeat(32);
+    const myKey = "ab".repeat(32);
+    const indexer = fakeIndexer({
+      events: [[{ txId: OLD_TX, topic: "std.component.updated" }]],
+      bodies: {},
+      results: {},
+      versionsByComponent: {
+        [CIRCLE]: [1, 1, 1, 1],
+        [TENDER]: [10, 11],
+      },
+    });
+    const outcome = await confirmAction(
+      indexer,
+      CIRCLE,
+      new Set(["collect_tender_refund"]),
+      new Set([OLD_TX]),
+      {
+        ...FAST,
+        beforeVersions: new Map([
+          [CIRCLE, 1],
+          [TENDER, 10],
+        ]),
+        signer: myKey,
+      },
+    );
+    expect(outcome).toEqual({ kind: "confirmed", txId: null, reason: null });
   });
 });
 

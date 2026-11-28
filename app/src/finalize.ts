@@ -152,13 +152,16 @@ function failureReason(decision: {
 /**
  * The newest recent transaction that is this action's own and
  * already committed: it calls one of `methods` on the
- * component, is sealed by the signer's key when known, is not
- * in `before` or `notMine`, and its body summary says Commit.
- * A fee-only ending (FeeIntentCommit) is not a commit, so a
- * failed attempt never counts as the action landing. Returns
- * null when the recent list names no such transaction. The
- * recent list is best effort, so a miss here is not proof
- * the transaction does not exist.
+ * component, is not in `before` or `notMine`, and its body
+ * summary says Commit. A fee-only ending (FeeIntentCommit)
+ * is not a commit, so a failed attempt never counts as the
+ * action landing. When the signer's key is known, a candidate
+ * sealed by it is preferred; otherwise the newest candidate
+ * is taken, because the seal key is not the owner key, so a
+ * seal mismatch does not mean the transaction is someone
+ * else's. Returns null when the recent list names no such
+ * transaction. The recent list is best effort, so a miss
+ * here is not proof the transaction does not exist.
  */
 async function findRecentMatch(
   indexer: Indexer,
@@ -174,22 +177,23 @@ async function findRecentMatch(
   } catch {
     return null;
   }
+  let newest: string | null = null;
   for (const { txId, body } of recent) {
     if (!txId || before.has(txId) || notMine.has(txId)) continue;
     try {
       if (!txCalls(body, component, methods)) continue;
-      if (signer && sealSigner(body) !== signer) {
+      const summary = parseBodySummary(body);
+      if (!summary || summary.decision !== "Commit") {
         notMine.add(txId);
         continue;
       }
-      const summary = parseBodySummary(body);
-      if (summary && summary.decision === "Commit") return txId;
-      notMine.add(txId);
+      if (signer && sealSigner(body) === signer) return txId;
+      if (!newest) newest = txId;
     } catch {
       /* leave the candidate unchecked */
     }
   }
-  return null;
+  return newest;
 }
 
 function findCalls(
@@ -228,10 +232,13 @@ export function txCalls(
  * transaction object, beside the body. Only that position is
  * read. A seal_signature appearing anywhere deeper, inside
  * instruction arguments or payload data, is data, not a seal,
- * and is never treated as one. In this stack the seal signer
- * is the submitting account's owner key, so it identifies
- * whose transaction this is. Returns null when the envelope
- * carries no readable seal.
+ * and is never treated as one. Proven live on mainnet
+ * 2026-11-28: the seal key is NOT the submitting account's
+ * owner key (a refund sealed by d27cad87... from an account
+ * owned by 5c6891e1...), so the seal can never be used to
+ * prove a transaction is not the submitter's own. It is kept
+ * only as a preference when choosing between candidates.
+ * Returns null when the envelope carries no readable seal.
  */
 export function sealSigner(body: unknown): string | null {
   const versioned = (
@@ -252,16 +259,24 @@ export interface ConfirmOptions {
   eventTries?: number;
   resultTries?: number;
   versionTries?: number;
-  // The watched component's version before the action was
-  // submitted. When known, a version increase proves the
-  // action's transaction landed even when the event feed has
-  // not indexed it yet, so the confirmation does not depend
-  // on the feed being fresh. Null when the version could not
-  // be read before submitting, and the version route is off.
-  beforeVersion?: number | null;
-  // The connected account's owner key. When known, a candidate
-  // transaction must be sealed by it to count as this action's
-  // own; when null, matching falls back to component and
+  // The version of every component this action touches,
+  // read before the action was submitted. When known, an
+  // increase in ANY of them proves the action's transaction
+  // landed even when the event feed has not indexed it yet,
+  // so the confirmation does not depend on the feed being
+  // fresh. A single component is not enough: a refund is
+  // called on the circle but only the tender's version moves
+  // (the circle stays at 1), so watching the circle alone
+  // can never prove it. Null when no version could be read
+  // before submitting, and the version route is off.
+  beforeVersions?: Map<string, number> | null;
+  // The connected account's owner key. When known, a
+  // candidate sealed by it is preferred; a candidate sealed
+  // by another key is still accepted when it is the newest
+  // new transaction calling the action's methods, because
+  // the seal key is not the owner key (proven live), so
+  // requiring a seal match rejects the submitter's own
+  // transaction. When null, matching uses component and
   // method alone.
   signer?: string | null;
 }
@@ -269,18 +284,51 @@ export interface ConfirmOptions {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * How a candidate transaction matches this action: "signer"
+ * when its body calls one of `methods` on the component and
+ * is sealed by the signer's key, "other" when it calls the
+ * methods but is sealed by another key or carries no readable
+ * seal, "nomatch" when its body reads but does not call the
+ * methods, null when its body cannot be read yet (indexer
+ * lag, or a body the indexers have pruned). A seal mismatch
+ * never disqualifies a candidate on its own, because the seal
+ * key is not the owner key; it only ranks below a signer
+ * match. Null leaves the candidate unchecked so a later poll
+ * can try it again.
+ */
+async function matchTx(
+  indexer: Indexer,
+  txId: string,
+  component: string,
+  methods: Set<string>,
+  signer: string | null,
+): Promise<"signer" | "other" | "nomatch" | null> {
+  let body: unknown;
+  try {
+    body = await indexer.transaction(txId);
+  } catch {
+    return null;
+  }
+  if (!txCalls(body, component, methods)) return "nomatch";
+  if (signer && sealSigner(body) === signer) return "signer";
+  return "other";
+}
+
+/**
  * Watch a component's event feed for the transaction this
  * action submitted: a transaction id not in `before` whose
- * body calls one of `methods` on the component and, when the
- * signer's key is known, is sealed by that key. Then read its
- * finalize decision. When the feed stays quiet, watch the
- * component's version instead: a version increase proves a
- * transaction changed the component, and a failed execution
- * changes nothing, so an increase after this action was
- * submitted is the action landing. Bounded: when nothing can
- * be read inside the budget, the outcome is unconfirmed,
- * never a guessed success, and an unconfirmed outcome names
- * a transaction only when that transaction was matched as the
+ * body calls one of `methods` on the component. A candidate
+ * sealed by the signer's key is preferred; any other new
+ * candidate is accepted, because the seal key is not the
+ * owner key. Then read its finalize decision. When the feed
+ * stays quiet, watch the versions of every component the
+ * action touches instead: an increase in any of them proves
+ * a transaction changed one, and a failed execution changes
+ * nothing, so an increase after this action was submitted is
+ * the action landing. Bounded: when nothing can be read
+ * inside the budget, the outcome is unconfirmed, never a
+ * guessed success, and an unconfirmed outcome names a
+ * transaction only when that transaction was matched as the
  * action's own.
  */
 export async function confirmAction(
@@ -294,7 +342,7 @@ export async function confirmAction(
   const eventTries = opts.eventTries ?? 24;
   const resultTries = opts.resultTries ?? 18;
   const versionTries = opts.versionTries ?? 12;
-  const beforeVersion = opts.beforeVersion ?? null;
+  const beforeVersions = opts.beforeVersions ?? null;
   const signer = opts.signer ?? null;
   let matched: string | null = null;
   const notMine = new Set<string>();
@@ -306,24 +354,18 @@ export async function confirmAction(
     } catch {
       continue;
     }
+    let fallback: string | null = null;
     for (const ev of events) {
       if (!ev.txId || before.has(ev.txId) || notMine.has(ev.txId)) continue;
-      try {
-        const body = await indexer.transaction(ev.txId);
-        if (
-          txCalls(body, component, methods) &&
-          (!signer || sealSigner(body) === signer)
-        ) {
-          matched = ev.txId;
-          break;
-        }
-        notMine.add(ev.txId);
-      } catch {
-        // The body is not readable yet (indexer lag, or a body
-        // the indexers have pruned). Leave the candidate
-        // unchecked so a later poll can try it again.
+      const how = await matchTx(indexer, ev.txId, component, methods, signer);
+      if (how === "signer") {
+        matched = ev.txId;
+        break;
       }
+      if (how === "other" && !fallback) fallback = ev.txId;
+      if (how === "nomatch") notMine.add(ev.txId);
     }
+    if (!matched) matched = fallback;
   }
   if (!matched) {
     // The event feed is stale on mainnet, but the recent list
@@ -338,57 +380,61 @@ export async function confirmAction(
       signer,
     );
   }
-  if (!matched && beforeVersion !== null) {
+  if (!matched && beforeVersions && beforeVersions.size > 0) {
     // The feed has not indexed the transaction yet. Watch the
-    // component's version: a failed execution changes nothing,
-    // so an increase after the submit is the action landing.
-    // A final feed and recent read then try to name the
-    // transaction for the receipt link; when both are still
-    // quiet the outcome is confirmed without a link, which is
-    // honest: the state change is the proof, the link is a
-    // nicety.
+    // version of every component this action touches: a failed
+    // execution changes nothing, so an increase in any of them
+    // after the submit is the action landing. A single
+    // component is not enough, because an action can move a
+    // different component than the one it was called on (a
+    // refund is called on the circle, only the tender's
+    // version moves). A final feed and recent read then try to
+    // name the transaction for the receipt link; when both are
+    // still quiet the outcome is confirmed without a link,
+    // which is honest: the state change is the proof, the link
+    // is a nicety.
     let versionProved = false;
     for (let i = 0; i < versionTries && !matched && !versionProved; i++) {
       if (i > 0) await sleep(pollMs);
-      let version: number | null = null;
-      try {
-        version = (await indexer.substate(component))?.version ?? null;
-      } catch {
-        continue;
-      }
-      if (version !== null && version > beforeVersion) {
-        versionProved = true;
+      for (const [addr, beforeVersion] of beforeVersions) {
+        let version: number | null = null;
         try {
-          const events = await indexer.events(component);
-          for (const ev of events) {
-            if (!ev.txId || before.has(ev.txId) || notMine.has(ev.txId)) continue;
-            try {
-              const body = await indexer.transaction(ev.txId);
-              if (
-                txCalls(body, component, methods) &&
-                (!signer || sealSigner(body) === signer)
-              ) {
-                matched = ev.txId;
-                break;
-              }
-              notMine.add(ev.txId);
-            } catch {
-              /* leave the candidate unchecked */
-            }
-          }
+          version = (await indexer.substate(addr))?.version ?? null;
         } catch {
-          /* the feed is still unreadable; try the recent list */
+          continue;
         }
-        if (!matched) {
-          matched = await findRecentMatch(
-            indexer,
-            component,
-            methods,
-            before,
-            notMine,
-            signer,
-          );
+        if (version !== null && version > beforeVersion) {
+          versionProved = true;
+          break;
         }
+      }
+      if (!versionProved) continue;
+      try {
+        const events = await indexer.events(component);
+        let fallback: string | null = null;
+        for (const ev of events) {
+          if (!ev.txId || before.has(ev.txId) || notMine.has(ev.txId)) continue;
+          const how = await matchTx(indexer, ev.txId, component, methods, signer);
+          if (how === "signer") {
+            matched = ev.txId;
+            break;
+          }
+          if (how === "other" && !fallback) fallback = ev.txId;
+          if (how === "nomatch") notMine.add(ev.txId);
+        }
+        if (!matched) matched = fallback;
+      } catch {
+        /* the feed is still unreadable; try the recent list */
+      }
+      if (!matched) {
+        matched = await findRecentMatch(
+          indexer,
+          component,
+          methods,
+          before,
+          notMine,
+          signer,
+        );
       }
     }
     if (!matched && versionProved) {
