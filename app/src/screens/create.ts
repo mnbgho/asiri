@@ -4,7 +4,7 @@
 import { App, el, errorBox, parseTari, short, tari } from "../app";
 import * as B from "../builders";
 import { fundingGuidance } from "../funding";
-import { feeNote } from "./common";
+import { feeNote, refreshAfter } from "./common";
 import { bytesToHex } from "../cbor";
 import { sha256 } from "../hash";
 import { thresholdError, type TenderRules } from "../model";
@@ -291,6 +291,10 @@ export async function renderCreate(
         text: "Your tender was created and its lock was submitted, awaiting finalization. This page may not show the locked rules yet.",
         txId: lock.outcome.txId,
       };
+      refreshAfter(2000);
+      refreshAfter(15000);
+    } else {
+      refreshAfter(2000);
     }
     go(`#/app/tender/${tender}`);
   }, (e) => errorBox(wrap, e));

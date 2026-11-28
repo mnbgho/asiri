@@ -190,6 +190,11 @@ export function actionButton(
   b.addEventListener("click", () => {
     void (async () => {
       b.disabled = true;
+      // Say the action is running, on the button itself: the
+      // wallet prompt and the chain confirmation take seconds,
+      // and a button that only greys out reads as dead.
+      const original = b.textContent;
+      b.textContent = "Working…";
       try {
         await onClick();
       } catch (e) {
@@ -207,6 +212,7 @@ export function actionButton(
           throw e;
         }
       } finally {
+        b.textContent = original;
         b.disabled = false;
       }
     })();
@@ -268,13 +274,41 @@ export function feeNote(action: FeeAction, prefix?: string): HTMLElement {
 }
 
 /**
+ * Ask the app frame to re-render the current screen, so its
+ * numbers come from the chain as it stands now. The frame
+ * listens for this event and re-renders, unless the visitor
+ * is typing. A no-op where there is no frame to ask.
+ */
+export function requestRefresh(): void {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.dispatchEvent === "function"
+  ) {
+    window.dispatchEvent(new Event("asiri:refresh"));
+  }
+}
+
+/** Re-render the current screen after a delay, so the indexer
+ * has time to record a transaction the wallet just submitted. */
+export function refreshAfter(ms: number): void {
+  if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+    window.setTimeout(() => requestRefresh(), ms);
+  }
+}
+
+/**
  * Settle a submitted action's outcome the same way on every
- * screen. A chain failure is shown here and stops the flow. An
- * unconfirmed submission leaves a note for the next screen,
- * saying plainly that the transaction was submitted and is
- * awaiting finalization. A confirmed outcome simply proceeds.
- * Returns true when the flow should continue to its
- * destination.
+ * screen. A chain failure is shown here and stops the flow.
+ * A confirmed outcome leaves a note for the next screen
+ * saying so, with the transaction link, and asks the screen
+ * to re-render shortly after, so the numbers it shows come
+ * from the chain after the action, not from before it. An
+ * unconfirmed submission leaves a note saying plainly that
+ * the transaction was submitted and is awaiting
+ * finalization, and asks for two re-renders, so the page
+ * updates by itself when the indexer catches up, instead of
+ * the visitor having to refresh to see it. Returns true when
+ * the flow should continue to its destination.
  */
 export function settleOutcome(
   app: App,
@@ -285,11 +319,19 @@ export function settleOutcome(
     chainError(app, root, outcome);
     return false;
   }
-  if (outcome.kind === "unconfirmed") {
+  if (outcome.kind === "confirmed") {
     app.flash = {
-      text: "Your transaction was submitted and is awaiting finalization. This page may not show its effect yet.",
+      text: "Confirmed on chain.",
       txId: outcome.txId,
     };
+    refreshAfter(2000);
+    return true;
   }
+  app.flash = {
+    text: "Your transaction was submitted and is awaiting finalization. This page may not show its effect yet.",
+    txId: outcome.txId,
+  };
+  refreshAfter(2000);
+  refreshAfter(15000);
   return true;
 }

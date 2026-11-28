@@ -32,6 +32,20 @@ if (
   window.addEventListener("asiri:wallet-connected", () => {
     refreshWalletCard?.();
   });
+  // A transaction just landed, or the indexer caught up with
+  // one: re-render the current screen so its numbers come
+  // from the chain as it stands now, not from when the page
+  // first loaded. While the visitor is typing in a field the
+  // refresh waits, so it never wipes what they are entering.
+  window.addEventListener("asiri:refresh", () => {
+    const active = document.activeElement;
+    const typing =
+      active !== null &&
+      (active.tagName === "INPUT" ||
+        active.tagName === "TEXTAREA" ||
+        active.tagName === "SELECT");
+    if (!typing) void route();
+  });
 }
 
 function go(hash: string): void {
@@ -397,6 +411,9 @@ async function route(): Promise<void> {
               : "The wallet did not connect. Try again.";
             return;
           }
+          // Remember the connection, so a page refresh
+          // reconnects it instead of dropping it.
+          if (app.wallet.account) app.rememberWallet(app.wallet.account);
           // The account is connected from here. Aligning the
           // wallet's network can still be declined, and that
           // is a third case, not a failed connection: the card
@@ -509,4 +526,21 @@ async function route(): Promise<void> {
 }
 
 window.addEventListener("hashchange", () => void route());
-void route();
+
+// Startup: if the wallet was connected before a refresh, ask
+// the wallet for its accounts again. A wallet that still
+// lists this site returns them without prompting, so the
+// connection survives the refresh. A wallet that no longer
+// authorizes the site, or a declined prompt, leaves the app
+// disconnected, and the remembered account is forgotten.
+void (async () => {
+  if (app.rememberedAccount() && (await waitForProvider())) {
+    try {
+      await app.wallet.connect();
+      await app.deriveIdentity();
+    } catch {
+      app.disconnect();
+    }
+  }
+  void route();
+})();

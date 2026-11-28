@@ -86,6 +86,24 @@ export class App {
   }
 
   /**
+   * The account the wallet was connected as, remembered across
+   * a page refresh so the app can reconnect it without asking
+   * the user to connect again. The wallet itself still holds
+   * the permission; this is only the reminder to ask it.
+   */
+  rememberedAccount(): string | null {
+    return store.get("wallet");
+  }
+
+  rememberWallet(account: string): void {
+    store.set("wallet", account);
+  }
+
+  forgetWallet(): void {
+    store.remove("wallet");
+  }
+
+  /**
    * Stop a submit before it starts when the wallet is on a
    * different network from the one the app is showing. Without
    * this, the transaction is built for the app's network and
@@ -165,8 +183,9 @@ export class App {
   /**
    * Disconnect the wallet and clear every piece of state the
    * app derived from that account: the balance, the derived
-   * public key (in memory and in storage), and the record of
-   * which account the identity belongs to. Watched addresses
+   * public key (in memory and in storage), the record of
+   * which account the identity belongs to, and the reminder
+   * that reconnects it after a refresh. Watched addresses
    * and saved bids stay: they name chain records and this
    * browser's own bids, not the account's identity.
    */
@@ -176,6 +195,7 @@ export class App {
     this.myKey = null;
     this.identityAccount = null;
     store.remove("mykey");
+    this.forgetWallet();
   }
 
   /**

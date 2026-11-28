@@ -90,3 +90,31 @@ describe("identity derivation", () => {
     expect(app.balance).toBeNull();
   });
 });
+
+describe("wallet connection remembered across refresh", () => {
+  // A Map-backed localStorage, so the remember/forget calls
+  // actually persist inside the test.
+  const backing = new Map<string, string>();
+  (globalThis as { localStorage?: unknown }).localStorage = {
+    getItem: (k: string) => backing.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      backing.set(k, v);
+    },
+    removeItem: (k: string) => {
+      backing.delete(k);
+    },
+  };
+
+  it("remembers the connected account and forgets it on disconnect", () => {
+    const app = new App();
+    expect(app.rememberedAccount()).toBeNull();
+    const account = "component_" + "aa".repeat(32);
+    app.rememberWallet(account);
+    expect(app.rememberedAccount()).toBe(account);
+    // A fresh App on the same storage still sees it: that is
+    // what a page refresh does.
+    expect(new App().rememberedAccount()).toBe(account);
+    app.disconnect();
+    expect(app.rememberedAccount()).toBeNull();
+  });
+});

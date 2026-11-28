@@ -5,7 +5,8 @@
 // createElement, className, textContent, disabled, and a
 // click listener.
 import { describe, expect, it } from "vitest";
-import { actionButton } from "../src/screens/common";
+import { actionButton, settleOutcome } from "../src/screens/common";
+import type { App } from "../src/app";
 
 class FakeButton {
   className = "";
@@ -81,5 +82,58 @@ describe("actionButton error routing", () => {
     expect(ran).toBe(true);
     expect(seen).toHaveLength(0);
     expect(btn.disabled).toBe(false);
+  });
+
+  it("shows Working while the action runs and restores the label after", async () => {
+    let release!: () => void;
+    const waitForRelease = new Promise<void>((r) => {
+      release = r;
+    });
+    const btn = actionButton(
+      "Close the reveal window",
+      "btn-blue",
+      async () => {
+        await waitForRelease;
+      },
+    ) as unknown as FakeButton;
+    btn.click();
+    await flush();
+    expect(btn.textContent).toBe("Working…");
+    expect(btn.disabled).toBe(true);
+    release();
+    await flush();
+    expect(btn.textContent).toBe("Close the reveal window");
+    expect(btn.disabled).toBe(false);
+  });
+});
+
+describe("settleOutcome feedback", () => {
+  // The app object here is only its flash slot: the confirmed
+  // and unconfirmed paths set it and never touch the rest.
+  const fakeApp = () => ({ flash: null }) as unknown as App;
+  const root = {} as unknown as HTMLElement;
+
+  it("leaves a confirmed note for the next screen", () => {
+    const app = fakeApp();
+    const ok = settleOutcome(app, root, {
+      kind: "confirmed",
+      txId: "aa".repeat(32),
+      reason: null,
+    });
+    expect(ok).toBe(true);
+    expect(app.flash?.text).toBe("Confirmed on chain.");
+    expect(app.flash?.txId).toBe("aa".repeat(32));
+  });
+
+  it("leaves an awaiting-finalization note when unconfirmed", () => {
+    const app = fakeApp();
+    const ok = settleOutcome(app, root, {
+      kind: "unconfirmed",
+      txId: "bb".repeat(32),
+      reason: null,
+    });
+    expect(ok).toBe(true);
+    expect(app.flash?.text).toContain("awaiting finalization");
+    expect(app.flash?.txId).toBe("bb".repeat(32));
   });
 });
