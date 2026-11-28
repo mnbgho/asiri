@@ -508,4 +508,36 @@ describe("App.submitAction", () => {
     expect(outcome.kind).toBe("unconfirmed");
     expect(eventsRead).toBe(false);
   });
+
+  it("narrates the transaction in stages for the status modal", async () => {
+    const app = await connectedApp();
+    const stages: unknown[] = [];
+    const win = (globalThis as { window: { dispatchEvent?: unknown } }).window;
+    win.dispatchEvent = (e: { detail?: unknown }) => {
+      stages.push(e.detail);
+      return true;
+    };
+    const indexer = fakeIndexer({
+      events: [
+        [{ txId: OLD_TX, topic: "std.component.updated" }],
+        [
+          { txId: NEW_TX, topic: "std.component.updated" },
+          { txId: OLD_TX, topic: "std.component.updated" },
+        ],
+      ],
+      bodies: { [NEW_TX]: txBody(TENDER, "close_reveal") },
+      results: { [NEW_TX]: COMMIT_RESULT },
+    });
+    app.indexer.events = indexer.events;
+    app.indexer.transaction = indexer.transaction;
+    app.indexer.transactionResult = indexer.transactionResult;
+    app.indexer.substate = async () => null;
+    const { outcome } = await app.submitAction(buildCloseReveal(TENDER), 2_000_000, FAST);
+    expect(outcome.kind).toBe("confirmed");
+    expect(stages).toEqual([
+      { stage: "wallet" },
+      { stage: "confirming" },
+      { stage: "confirmed", txId: NEW_TX },
+    ]);
+  });
 });

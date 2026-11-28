@@ -1,6 +1,8 @@
 // Entry point and hash router. Two views: the landing page and
 // the app frame (sidebar, network switch, wallet card, screens).
 import { App, cap, el, explorerLink, setAria, short, tari } from "./app";
+import type { TxStage } from "./app";
+import { TxModal } from "./txmodal";
 import { fundingApplies, fundingGuidance } from "./funding";
 import { networkPill } from "./indexer";
 import { updateDeadlineSpans } from "./time";
@@ -45,6 +47,21 @@ if (
         active.tagName === "TEXTAREA" ||
         active.tagName === "SELECT");
     if (!typing) void route();
+  });
+}
+
+// The transaction status modal: one overlay for the whole
+// app, narrating every action while it runs. It is created
+// once here and answers the stage events the app dispatches
+// from every submit, so no action needs its own popup.
+const txModal = new TxModal();
+if (
+  typeof window !== "undefined" &&
+  typeof window.addEventListener === "function"
+) {
+  window.addEventListener("asiri:tx-stage", (e) => {
+    const detail = (e as Event & { detail?: TxStage }).detail;
+    if (detail) txModal.show(app, detail);
   });
 }
 

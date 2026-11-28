@@ -24,6 +24,34 @@ import {
   type SubstateRequirement,
 } from "./wallet";
 
+/**
+ * The stages of one transaction, as the app reports them to
+ * the screen: waiting for the wallet, submitted and waiting
+ * for the chain, then the ending the chain gave. The modal
+ * listens for these and narrates the wait, so no action ever
+ * leaves the visitor staring at a still page wondering
+ * whether anything happened.
+ */
+export type TxStage =
+  | { stage: "wallet" }
+  | { stage: "confirming" }
+  | { stage: "submitted" }
+  | { stage: "confirmed"; txId: string | null }
+  | { stage: "failed"; txId: string | null; reason: string | null }
+  | { stage: "unconfirmed"; txId: string | null }
+  | { stage: "error"; message: string };
+
+export function dispatchTxStage(detail: TxStage): void {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.dispatchEvent === "function"
+  ) {
+    const event = new Event("asiri:tx-stage") as Event & { detail?: TxStage };
+    event.detail = detail;
+    window.dispatchEvent(event);
+  }
+}
+
 const store = {
   get(k: string): string | null {
     try {
@@ -177,7 +205,18 @@ export class App {
     maxFeeMicroTari = 2_000_000,
   ): Promise<{ result: unknown }> {
     await this.guardWalletNetwork();
-    return this.submitWithFeeInputs(instructions, maxFeeMicroTari);
+    dispatchTxStage({ stage: "wallet" });
+    try {
+      const out = await this.submitWithFeeInputs(instructions, maxFeeMicroTari);
+      dispatchTxStage({ stage: "submitted" });
+      return out;
+    } catch (e) {
+      dispatchTxStage({
+        stage: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
   }
 
   /**
@@ -276,11 +315,23 @@ export class App {
     if (this.wallet.account) calls.delete(this.wallet.account);
     const watch = [...calls.keys()][0];
     const before = watch ? await this.snapshotTxIds(watch) : null;
-    const { result } = await this.submitWithFeeInputs(instructions, maxFeeMicroTari);
+    dispatchTxStage({ stage: "wallet" });
+    let result: unknown;
+    try {
+      ({ result } = await this.submitWithFeeInputs(instructions, maxFeeMicroTari));
+    } catch (e) {
+      dispatchTxStage({
+        stage: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
     if (!watch || !before) {
+      dispatchTxStage({ stage: "unconfirmed", txId: null });
       await this.deriveIdentity();
       return { result, outcome: UNCONFIRMED };
     }
+    dispatchTxStage({ stage: "confirming" });
     const outcome = await confirmAction(this.indexer, watch, calls.get(watch)!, before, {
       ...confirmOpts,
       // The derived key is what seals this account's
@@ -290,6 +341,17 @@ export class App {
       // confirmation matches on component and method alone.
       signer: this.myKey,
     });
+    if (outcome.kind === "confirmed") {
+      dispatchTxStage({ stage: "confirmed", txId: outcome.txId });
+    } else if (outcome.kind === "failed") {
+      dispatchTxStage({
+        stage: "failed",
+        txId: outcome.txId,
+        reason: outcome.reason,
+      });
+    } else {
+      dispatchTxStage({ stage: "unconfirmed", txId: outcome.txId });
+    }
     // The action moved money, even when it only paid a fee:
     // re-derive the balance so the wallet card never keeps
     // showing the figure from before the action.
