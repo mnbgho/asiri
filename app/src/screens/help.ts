@@ -51,7 +51,7 @@ const QUESTIONS: Qa[] = [
   {
     q: "I lost my salt. Can it be recovered?",
     a: [
-      "No. A bid's salt exists only where you kept it: in this browser's saved bids, on paper if you wrote it down, or in a backup file you exported from bid and reveal. The commitment on chain is a one-way hash, and nobody can work the salt back out of it: not the circle, not this app, and not the network. There is no recovery path. Without the salt the bid can never be revealed, and its bond follows the never-reveal outcome above. Export a backup from bid and reveal before you need it.",
+      "No. A bid's salt exists only where you kept it: in this browser's saved bids, on paper if you wrote it down, or in a backup file you exported from bid and reveal. The commitment on chain is a one-way hash, and nobody can work the salt back out of it: not the circle, not this app, and not the network. There is no recovery path. Without the salt the bid can never be revealed, and its bond follows the never-reveal outcome above. Export a backup from bid and reveal before you need it. Check your backup before the reveal window closes. The inbox reminder names the deadline, and it cannot check the salt for you.",
     ],
   },
   {

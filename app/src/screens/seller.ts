@@ -100,15 +100,96 @@ export async function checkRevealable(app: App, tenderAddr: string): Promise<voi
   }
 }
 
-function saveBid(bid: SavedBid): void {
+/**
+ * Recompute a bid's commitment from its own price, salt, and
+ * identity, and refuse the reveal before the wallet opens
+ * when the recomputed hash does not match the saved
+ * commitment. A wrong salt costs no fee this way: the chain
+ * is never asked, because the answer is already known on
+ * this device.
+ */
+export async function checkSaltMatchesCommitment(bid: SavedBid): Promise<void> {
+  let recomputed: string;
+  try {
+    recomputed = await commitmentHash(
+      BigInt(bid.price),
+      hexToBytes(bid.saltHex),
+      bid.identity,
+    );
+  } catch {
+    throw new Error(
+      "That salt does not match this bid. Nothing was submitted. No fee was spent. Check the salt and try again.",
+    );
+  }
+  if (recomputed !== bid.commitment) {
+    throw new Error(
+      "That salt does not match this bid. Nothing was submitted. No fee was spent. Check the salt and try again.",
+    );
+  }
+}
+
+/**
+ * The manual reveal has no saved commitment to compare
+ * against, so the recomputed hash is checked against the
+ * commitments the tender itself holds on chain. A hash that
+ * matches no committed bid cannot be revealed, and the
+ * reveal is refused before the wallet opens.
+ */
+async function checkManualSaltMatchesTender(
+  app: App,
+  tenderAddr: string,
+  price: bigint,
+  salt: Uint8Array,
+  identity: string,
+): Promise<void> {
+  const recomputed = await commitmentHash(price, salt, identity);
+  const sub = await readSubstatePlain(app, tenderAddr);
+  if (!sub)
+    throw new Error(plainAddressError(tenderAddr, new Error("That component is down")));
+  let t: TenderComponentState;
+  try {
+    t = decodeTenderState(sub.value);
+  } catch (e) {
+    throw new Error(plainAddressError(tenderAddr, e));
+  }
+  const found = t.commitments.some((c) => c.commitment === recomputed);
+  if (!found) {
+    throw new Error(
+      "That salt, price, and payment identity do not match the commitment. Nothing was submitted. No fee was spent. Check the three values and try again. If you just committed, the indexer may not have caught up yet. Try again in a few minutes.",
+    );
+  }
+}
+
+function saveBid(bid: SavedBid): boolean {
   const all = savedBids().filter(
     (b) => !(b.tender === bid.tender && b.commitment === bid.commitment),
   );
   all.push(bid);
   try {
     localStorage.setItem(KEY, JSON.stringify(all));
+    return true;
   } catch {
-    /* the bid still exists in the page until it closes */
+    // The bid still exists in the page until it closes, but
+    // the caller must say so: a silent failure here is a lost
+    // salt the seller never hears about.
+    return false;
+  }
+}
+
+/**
+ * Remove one saved bid from this browser, by tender plus
+ * commitment. Used when a commit fails on chain, so the saved
+ * list never offers a reveal for a commitment that is not on
+ * chain, and by the delete control on a saved bid row.
+ */
+export function removeBid(tender: string, commitment: string): void {
+  const all = savedBids().filter(
+    (b) => !(b.tender === tender && b.commitment === commitment),
+  );
+  try {
+    localStorage.setItem(KEY, JSON.stringify(all));
+  } catch {
+    /* the list stays as it was */
   }
 }
 
@@ -162,7 +243,69 @@ export async function renderSeller(
     field("Payment identity", identityIn, "The public key the winnings go to. It is part of the commitment, so it cannot be swapped later."),
   );
   const summary = el("div");
-  const commitBtn = actionButton("Commit this bid", "btn-blue", async () => {
+  // Two steps in one screen. Step one generates the salt and
+  // shows it, with the commitment, the bond, and the reveal
+  // window. Step two asks the seller to confirm the salt is
+  // saved, and only then submits. The submit stays disabled
+  // until the box is ticked. The salt is generated once, the
+  // commit is submitted once, and step two submits the one
+  // commitment already shown. Editing a field after step one
+  // clears the pending bid, so a stale commitment can never
+  // be submitted.
+  let pendingBid: SavedBid | null = null;
+  let pendingBond = 0n;
+  // One salt per commit: actionButton re-enables its button
+  // after the click, so the flag, not the disabled state, is
+  // what stops a second generation. The visual disable is
+  // applied after the handler returns, so it survives.
+  let stepOneUsed = false;
+  const stepTwo = el("div", "step-two");
+  stepTwo.hidden = true;
+  const confirmBox = el("input");
+  confirmBox.type = "checkbox";
+  const confirmLabel = el("label", undefined, "I wrote the salt down, or I saved the backup file. I know the salt cannot be recovered.");
+  const confirmRow = el("div", "confirm-row");
+  confirmRow.append(confirmBox, confirmLabel);
+  const submitBtn = actionButton("Commit this bid", "btn-blue", async () => {
+    const account = requireWallet(app, "commit this bid");
+    if (!account || !pendingBid) return;
+    const bid = pendingBid;
+    const { outcome } = await app.submitAction(
+      B.buildCommitBid(account, bid.tender, bid.commitment, pendingBond),
+    );
+    if (!settleOutcome(app, wrap, outcome)) {
+      // A confirmed on chain failure: the bid was saved before
+      // the submit, so remove it now, or the saved list would
+      // offer a reveal for a commitment that is not on chain.
+      // An unconfirmed outcome never reaches this branch.
+      removeBid(bid.tender, bid.commitment);
+      errorBox(
+        wrap,
+        new Error("The commit failed, so nothing was saved. No bond moved. Only the network fee was spent."),
+      );
+      return;
+    }
+    go(`#/app/tender/${bid.tender}`);
+  }, (e) => errorBox(wrap, e));
+  submitBtn.disabled = true;
+  confirmBox.addEventListener("change", () => {
+    submitBtn.disabled = !confirmBox.checked;
+  });
+  stepTwo.append(confirmRow, submitBtn);
+  const resetPending = () => {
+    pendingBid = null;
+    stepOneUsed = false;
+    stepOneBtn.disabled = false;
+    stepTwo.hidden = true;
+    submitBtn.disabled = true;
+    confirmBox.checked = false;
+    summary.replaceChildren();
+  };
+  for (const input of [tenderIn, priceIn, identityIn]) {
+    input.addEventListener("input", resetPending);
+  }
+  const stepOneBtn = actionButton("Generate my salt", "btn-blue", async () => {
+    if (stepOneUsed) return;
     const account = requireWallet(app, "commit this bid");
     if (!account) return;
     const tenderAddr = tenderIn.value.trim();
@@ -195,7 +338,7 @@ export async function renderSeller(
     warn.append(
       el("b", undefined, "Your salt. "),
       document.createTextNode(
-        "Write it down now. It is shown once. This browser keeps a copy, but if you lose both, your bond is forfeited and the bid can never be opened.",
+        "Write it down now. This browser keeps a copy, but a browser copy alone is not enough. If you lose the salt, your bid can never be revealed. Your bond follows the never reveal outcome.",
       ),
     );
     const saltEl = el("div", "hash", bytesToHex(salt));
@@ -223,18 +366,27 @@ export async function renderSeller(
     );
     if (windowText) kv(kvBox, "Reveal window", windowText);
     summary.append(warn, saltEl, kvBox);
-    commitBox.body.append(summary);
     // Persist the bid before submitting: if the wallet accepts
     // the transaction but the response is lost, the salt must
     // still be recoverable, or the bond is forfeited.
-    saveBid(bid);
-    const { outcome } = await app.submitAction(
-      B.buildCommitBid(account, tenderAddr, commitment, t.rules.bondAmount),
-    );
-    if (!settleOutcome(app, wrap, outcome)) return;
-    go(`#/app/tender/${tenderAddr}`);
+    const saved = saveBid(bid);
+    if (!saved) {
+      const saveWarn = el(
+        "div",
+        "warn",
+        "This browser could not save the bid. Write the salt down before you continue. Closing this tab now would lose it.",
+      );
+      summary.append(saveWarn);
+    }
+    pendingBid = bid;
+    pendingBond = t.rules.bondAmount;
+    stepOneUsed = true;
+    setTimeout(() => {
+      stepOneBtn.disabled = true;
+    }, 0);
+    stepTwo.hidden = false;
   }, (e) => errorBox(wrap, e));
-  commitBox.body.append(commitBtn, feeNote("commitBid"), summary);
+  commitBox.body.append(stepOneBtn, feeNote("commitBid"), summary, stepTwo);
   wrap.append(commitBox.box);
 
   const revealBox = box("Reveal a bid");
@@ -244,13 +396,61 @@ export async function renderSeller(
       el("div", "empty", "No bids saved in this browser. If you committed from another browser, paste the details below."),
     );
   }
+  // A saved bid whose salt does not recompute to its own
+  // commitment cannot be revealed. The check runs when this
+  // screen loads, so a damaged saved bid is marked here
+  // instead of offering a reveal the chain would reject.
+  const bidValid = new Map<string, boolean>();
   for (const bid of mine) {
+    try {
+      bidValid.set(
+        `${bid.tender}:${bid.commitment}`,
+        (await commitmentHash(
+          BigInt(bid.price),
+          hexToBytes(bid.saltHex),
+          bid.identity,
+        )) === bid.commitment,
+      );
+    } catch {
+      bidValid.set(`${bid.tender}:${bid.commitment}`, false);
+    }
+  }
+  for (const bid of mine) {
+    const valid = bidValid.get(`${bid.tender}:${bid.commitment}`) ?? true;
     const row = el("div", "commit-row");
     row.append(el("span", undefined, `${bid.tender.slice(0, 18)}…`));
     row.append(el("span", "hash", bid.commitment.slice(0, 16) + "…"));
     row.append(el("span", "spacer"));
+    // The salt is hidden by default. A seller who missed the
+    // commit moment can ask for it again, one bid at a time,
+    // with a warning and a copy button. The salt is already
+    // in plaintext in this browser, so showing it creates no
+    // new copy. It only makes an existing copy visible.
+    const saltPanel = el("div", "salt-panel");
+    saltPanel.hidden = true;
+    const saltEl = el("div", "hash", bid.saltHex);
+    const saltWarn = el(
+      "div",
+      "warn",
+      "Keep this salt private. Anyone who sees it can work out your price. Do not share your screen while it is visible.",
+    );
+    const copyBtn = actionButton("Copy salt", "btn-white btn-sm", async () => {
+      try {
+        await navigator.clipboard.writeText(bid.saltHex);
+        copyBtn.textContent = "Copied";
+      } catch {
+        copyBtn.textContent = "Copy failed. Select the salt and copy it by hand.";
+      }
+    });
+    saltPanel.append(saltEl, saltWarn, copyBtn);
+    const showBtn = actionButton("Show salt", "btn-white btn-sm", () => {
+      saltPanel.hidden = !saltPanel.hidden;
+      showBtn.textContent = saltPanel.hidden ? "Show salt" : "Hide salt";
+    });
+    row.append(showBtn);
     const btn = actionButton("reveal", "btn-blue btn-sm", async () => {
       if (!requireWallet(app, "reveal this bid")) return;
+      await checkSaltMatchesCommitment(bid);
       await checkRevealable(app, bid.tender);
       const { outcome } = await app.submitAction(
         B.buildRevealBid(
@@ -264,7 +464,40 @@ export async function renderSeller(
       go(`#/app/tender/${bid.tender}`);
     }, (e) => errorBox(wrap, e));
     row.append(btn);
-    revealBox.body.append(row);
+    // A shared browser needs a way to remove a bid. Delete
+    // asks first, and names the consequence before anything
+    // is removed. There is no undo inside the app: the only
+    // way back is reimporting a backup.
+    const deletePanel = el("div", "salt-panel");
+    deletePanel.hidden = true;
+    const deleteWarn = el(
+      "div",
+      "warn",
+      "Delete this saved bid from this browser. If this is the only copy of the salt, the bid can never be revealed. Delete it only if you have a backup, or if the bid was never committed.",
+    );
+    const deleteConfirmBtn = actionButton("Delete this bid", "btn-white btn-sm", () => {
+      removeBid(bid.tender, bid.commitment);
+      go("#/app/seller");
+    });
+    const deleteKeepBtn = actionButton("Keep it", "btn-white btn-sm", () => {
+      deletePanel.hidden = true;
+    });
+    deletePanel.append(deleteWarn, deleteConfirmBtn, deleteKeepBtn);
+    const deleteBtn = actionButton("Delete", "btn-white btn-sm", () => {
+      deletePanel.hidden = !deletePanel.hidden;
+    });
+    row.append(deleteBtn);
+    if (!valid) {
+      btn.disabled = true;
+      const badNote = el(
+        "div",
+        "warn",
+        "This saved bid does not match its commitment. It cannot be revealed.",
+      );
+      revealBox.body.append(row, badNote, saltPanel, deletePanel);
+    } else {
+      revealBox.body.append(row, saltPanel, deletePanel);
+    }
   }
   if (mine.length) revealBox.body.append(feeNote("revealBid"));
   const mTender = textInput("mono");
@@ -285,6 +518,13 @@ export async function renderSeller(
     if (!requireWallet(app, "reveal a bid")) return;
     const salt = hexToBytes(mSalt.value.trim().toLowerCase());
     if (salt.length !== 32) throw new Error("The salt must be 32 bytes");
+    await checkManualSaltMatchesTender(
+      app,
+      mTender.value.trim(),
+      parseTari(mPrice.value),
+      salt,
+      mIdentity.value.trim().toLowerCase(),
+    );
     await checkRevealable(app, mTender.value.trim());
     const { outcome } = await app.submitAction(
       B.buildRevealBid(
@@ -315,22 +555,51 @@ export async function renderSeller(
   const passIn = textInput();
   passIn.type = "password";
   passIn.placeholder = "A passphrase only you know";
+  const passRepeatIn = textInput();
+  passRepeatIn.type = "password";
+  passRepeatIn.placeholder = "Repeat the passphrase";
   backupBox.body.append(
     field(
       "Passphrase",
       passIn,
-      "For an encrypted backup, or to open an encrypted one below. The app does not keep it: if you forget it, the encrypted file cannot be opened, and there is still no recovery path.",
+      "For an encrypted backup, or to open an encrypted one below. The app does not keep it: if you forget it, the encrypted file cannot be opened, and there is still no recovery path. Use a long passphrase you will remember. A short passphrase can be guessed.",
+    ),
+    field(
+      "Repeat the passphrase",
+      passRepeatIn,
+      "For an encrypted backup. The two must match before the download starts.",
     ),
   );
   if (mine.length) {
-    const plainBtn = actionButton("Download a plain backup", "btn-white", () => {
-      downloadTextFile("asiri-bids.json", serializeBids(savedBids()));
-    }, (e) => errorBox(wrap, e));
+    // The encrypted backup comes first, labelled as the
+    // recommended form. The plain backup comes second, with
+    // its warning beside it. Both files hold the same bids.
+    // The reminder stands while saved bids exist: the file
+    // is the seller's own copy, kept where the seller
+    // chooses, and it is the only way the salt survives a
+    // lost browser.
+    backupBox.body.append(
+      el(
+        "div",
+        "warn",
+        "Your bid is committed. Back it up now, before you close this tab.",
+      ),
+    );
     const encBtn = actionButton("Download an encrypted backup", "btn-white", async () => {
+      if (passIn.value !== passRepeatIn.value)
+        throw new Error("The two passphrases do not match. Check them and try again.");
       const text = await encryptBids(savedBids(), passIn.value);
       downloadTextFile("asiri-bids-encrypted.json", text);
     }, (e) => errorBox(wrap, e));
-    backupBox.body.append(plainBtn, encBtn);
+    const plainBtn = actionButton("Download a plain backup", "btn-white", () => {
+      downloadTextFile("asiri-bids.json", serializeBids(savedBids()));
+    }, (e) => errorBox(wrap, e));
+    backupBox.body.append(
+      el("div", "small", "Recommended. An encrypted backup opens only with your passphrase."),
+      encBtn,
+      el("div", "small", "Plain text. Anyone who opens this file can read every salt in it. Use it only on a device you control."),
+      plainBtn,
+    );
   }
   const importIn = el("input");
   importIn.type = "file";
@@ -343,7 +612,7 @@ export async function renderSeller(
     const text = await file.text();
     const bids = isEncryptedBackup(text)
       ? await decryptBidsFile(text, passIn.value)
-      : parseBidsFile(text);
+      : await parseBidsFile(text);
     const added = mergeBids(bids);
     if (added) {
       app.flash = {

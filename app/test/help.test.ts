@@ -174,4 +174,29 @@ describe("seller desk backup box", () => {
     expect(t).toContain("Download an encrypted backup");
     expect(t).toContain("if you forget it, the encrypted file cannot be opened");
   });
+
+  it("shows the salt controls, the two-step commit, and the encrypted backup first", async () => {
+    mergeBids([
+      {
+        tender: "component_" + "11".repeat(32),
+        price: "1500000",
+        saltHex: "ab".repeat(32),
+        identity: "01".repeat(32),
+        commitment: "cd".repeat(32),
+      },
+    ]);
+    const app = new App();
+    const r = root();
+    await renderSeller(app, r, go);
+    const t = text(r);
+    expect(t).toContain("Generate my salt");
+    expect(t).toContain("Show salt");
+    expect(t).toContain("Delete");
+    expect(t).toContain("Repeat the passphrase");
+    expect(t).toContain("Recommended. An encrypted backup opens only with your passphrase.");
+    expect(t).toContain("Your bid is committed. Back it up now, before you close this tab.");
+    expect(t.indexOf("Download an encrypted backup")).toBeLessThan(
+      t.indexOf("Download a plain backup"),
+    );
+  });
 });

@@ -7,7 +7,7 @@ Asiri is live on Tari mainnet today. The app is at https://asiri-xi.vercel.app. 
 - Seven tenders have settled on mainnet against the Heartland Provisions Circle. Six ran as a season. The seventh ran purely to be attacked.
 - The shipped receipts carry 90 of 90 checks. Two independent verifiers recomputed them with identical readings on every tender.
 - Eighteen attacks were refused by the chain. Each refusal is recorded in the chain's own words.
-- 504 tests pass from a clean checkout. 51 cover the engine. 381 cover the app. 72 cover the standalone verifier.
+- 513 tests pass from a clean checkout. 51 cover the engine. 390 cover the app. 72 cover the standalone verifier.
 - A real circle, run by people outside the project, is done. Two independent testers ran a buying circle on mainnet through the live app, from the first bid to the final payment, with their own keys. The tender closed on chain: payment, receipt, bond return, and escrow refund all landed.
 - Both mainnet templates match the hashes pinned in this repo. The match was checked on both public indexers. A fresh rebuild reproduces the template definition exactly.
 - A seven-tender season ran on the Esmeralda testnet first, with the same full verification. The full record is in [evidence/mainnet.md](evidence/mainnet.md) and [evidence/esmeralda.md](evidence/esmeralda.md).

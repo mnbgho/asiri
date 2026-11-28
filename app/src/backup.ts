@@ -16,6 +16,9 @@
 // fail instead of decrypting to nonsense. The app keeps no
 // copy of the passphrase, so a forgotten one opens nothing.
 
+import { hexToBytes } from "./cbor";
+import { commitmentHash } from "./hash";
+
 export interface BidBackupRecord {
   tender: string;
   price: string; // µT as a decimal string
@@ -57,8 +60,40 @@ export function serializeBids(bids: readonly BidBackupRecord[]): string {
   return JSON.stringify({ format: PLAIN_FORMAT, version: 1, bids }, null, 2);
 }
 
+/**
+ * Recompute each bid's commitment from its own price, salt,
+ * and identity, and compare it with the commitment in the
+ * record. A bid that does not match its own commitment is
+ * damaged or tampered with, so the whole file is refused
+ * before anything is imported: a file with one bad bid may
+ * hold more damage the check cannot see.
+ */
+export async function checkBidsMatchCommitments(
+  bids: readonly BidBackupRecord[],
+): Promise<void> {
+  for (const bid of bids) {
+    let recomputed: string;
+    try {
+      recomputed = await commitmentHash(
+        BigInt(bid.price),
+        hexToBytes(bid.saltHex),
+        bid.identity,
+      );
+    } catch {
+      throw new Error(
+        "That file holds a bid that does not match its own commitment. Nothing was imported. Check the file and try again.",
+      );
+    }
+    if (recomputed !== bid.commitment) {
+      throw new Error(
+        "That file holds a bid that does not match its own commitment. Nothing was imported. Check the file and try again.",
+      );
+    }
+  }
+}
+
 /** Read a plain backup file back into bid records. */
-export function parseBidsFile(text: string): BidBackupRecord[] {
+export async function parseBidsFile(text: string): Promise<BidBackupRecord[]> {
   let doc: unknown;
   try {
     doc = JSON.parse(text);
@@ -73,7 +108,9 @@ export function parseBidsFile(text: string): BidBackupRecord[] {
   ) {
     throw new Error("That file is not an Asiri bids backup.");
   }
-  return (doc as { bids: unknown[] }).bids.map(validateBid);
+  const bids = (doc as { bids: unknown[] }).bids.map(validateBid);
+  await checkBidsMatchCommitments(bids);
+  return bids;
 }
 
 /** True when the file is the encrypted form and needs a passphrase. */
@@ -128,9 +165,9 @@ export async function encryptBids(
   passphrase: string,
 ): Promise<string> {
   if (!passphrase) throw new Error("Choose a passphrase first.");
-  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const kdfSalt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(passphrase, salt, PBKDF2_ITERATIONS);
+  const key = await deriveKey(passphrase, kdfSalt, PBKDF2_ITERATIONS);
   const data = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv: iv as BufferSource },
     key,
@@ -144,7 +181,7 @@ export async function encryptBids(
         name: "PBKDF2",
         hash: "SHA-256",
         iterations: PBKDF2_ITERATIONS,
-        salt: toB64(salt),
+        salt: toB64(kdfSalt),
       },
       cipher: { name: "AES-GCM", iv: toB64(iv) },
       data: toB64(new Uint8Array(data)),
@@ -201,18 +238,23 @@ export async function decryptBidsFile(
   ) {
     throw fail();
   }
+  let plainText: string;
   try {
-    const salt = fromB64(doc.kdf.salt);
+    const kdfSalt = fromB64(doc.kdf.salt);
     const iv = fromB64(doc.cipher.iv);
-    if (salt.length !== 16 || iv.length !== 12) throw fail();
-    const key = await deriveKey(passphrase, salt, doc.kdf.iterations);
+    if (kdfSalt.length !== 16 || iv.length !== 12) throw fail();
+    const key = await deriveKey(passphrase, kdfSalt, doc.kdf.iterations);
     const plain = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: iv as BufferSource },
       key,
       fromB64(doc.data) as BufferSource,
     );
-    return parseBidsFile(new TextDecoder().decode(plain));
+    plainText = new TextDecoder().decode(plain);
   } catch {
     throw fail();
   }
+  // The integrity check runs outside the decrypt catch, so a
+  // decrypted file with a bad bid reports the bad bid in plain
+  // words instead of the generic open failure.
+  return parseBidsFile(plainText);
 }

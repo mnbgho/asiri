@@ -27,7 +27,7 @@ The claim, stated exactly: the winner is the lowest valid revealed bid under the
 - **7 tenders on mainnet**, against the Heartland Provisions Circle: a plain award, a tie, an override, a dispute, an expiry, a ten-seller tender, and one tender run purely to be attacked.
 - **90 of 90 checks passed**, recomputed by two independent verifiers, the standalone script and the verifier inside the app, with identical readings on every tender.
 - **18 attacks rejected by the chain**, each recorded in the chain's own words: duplicate bids, wrong salts, wrong prices, late bids, a rules rewrite after the lock, an override with no rationale, an override picking a bid nobody revealed, and double payment claims after settlement.
-- **504 tests** across the engine, the app, and the standalone verifier.
+- **513 tests** across the engine, the app, and the standalone verifier.
 - **Two independent testers ran the full loop through the live app.** A buying circle outside the project ran a tender on mainnet from the first bid to the final payment, through the app, with its own keys: circle created, tender created and locked, bid committed and revealed, award, delivery, confirmation, payment, receipt, bond return, and escrow refund, all closed on chain.
 - A **7-tender season on the Esmeralda testnet** ran first, with the same full verification.
 

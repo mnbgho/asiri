@@ -121,12 +121,12 @@ export const GUIDE_TASKS: GuideTask[] = [
       },
       {
         title: "Save your bid details",
-        text: "Save the salt. You cannot reveal without it.",
+        text: "Click Generate my salt, then write the salt down. You cannot reveal without it.",
         route: "#/app/seller",
       },
       {
         title: "Commit your bid",
-        text: "Click Commit bid and approve it in your wallet. Your bond locks.",
+        text: "Tick the box that says you saved the salt, then click Commit this bid and approve it in your wallet. Your bond locks.",
         route: "#/app/seller",
       },
       {

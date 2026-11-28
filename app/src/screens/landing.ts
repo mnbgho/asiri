@@ -528,7 +528,7 @@ export async function renderLanding(
     ],
     [
       "What does a seller risk?",
-      "A bond, posted with the bid. Reveal, win or lose, and it returns in full. Stay silent while the tender awards and the bond is split, half to the circle, half locked forever. If the tender instead expires with no award, an unrevealed bond comes back whole. The seller also keeps the salt private: lose it and the bid can never be revealed.",
+      "A bond, posted with the bid. Reveal, win or lose, and it returns in full. Stay silent while the tender awards and the bond is split, half to the circle, half locked forever. If the tender instead expires with no award, an unrevealed bond comes back whole. The seller also keeps the salt private: lose it and the bid can never be revealed. Back the salt up before you close the tab.",
     ],
     [
       "Do I need a wallet to check a tender?",
