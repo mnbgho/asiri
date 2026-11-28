@@ -44,7 +44,7 @@ pip install asiri-verify
 asiri-verify component_84e25948c447c3ee437e783fc29b4bfebf18fb2cc1bee1c0ed41598113ad37f2 --network mainnet
 ```
 
-That is the gate tender from the mainnet season. A live re-run today reads 11 of 13, with the reveal recomputation as could not be read: the mainnet indexer no longer serves the reveal transaction bodies it served when the shipped receipts were produced at 13 of 13. The receipts in the app carry the full run.
+That is the gate tender from the mainnet season. A live re-run today reads between 10 and 12 of 13, with the shortfall entirely in could not be read and zero failures: the mainnet indexer no longer serves the reveal transaction bodies it served when the shipped receipts were produced at 13 of 13. The receipts in the app carry the full run.
 
 Run the app locally:
 
