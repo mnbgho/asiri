@@ -2,6 +2,7 @@
 // the app frame (sidebar, network switch, wallet card, screens).
 import { App, cap, el, explorerLink, setAria, short, tari } from "./app";
 import type { TxStage } from "./app";
+import { GuidePanel } from "./guide";
 import { TxModal } from "./txmodal";
 import { fundingApplies, fundingGuidance } from "./funding";
 import { networkPill } from "./indexer";
@@ -64,6 +65,12 @@ if (
     if (detail) txModal.show(app, detail);
   });
 }
+
+// The guided helper: one floating button for the whole app,
+// opening a panel that asks what the visitor wants to do
+// and walks them through it. It lives on the page itself,
+// outside the routed frame, so it survives navigation.
+new GuidePanel();
 
 function go(hash: string): void {
   if (location.hash === hash) void route();

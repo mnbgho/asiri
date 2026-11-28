@@ -705,3 +705,63 @@ footer.lp-foot { background: var(--blue); color: var(--white); }
 .tx-msg { font-size: 14px; line-height: 1.55; color: var(--mut1); }
 .tx-link { font-size: 13px; overflow-wrap: anywhere; }
 .tx-close[hidden] { display: none; }
+
+/* The guided helper: a round button pinned to the bottom
+   right, always on screen, opening a panel that asks what
+   the visitor wants to do and walks them through it. The
+   panel sits above the button and scrolls when the steps
+   run long. The current step carries the blue edge. */
+.guide-btn {
+  position: fixed; right: 20px; bottom: 20px; z-index: 90;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--blue); color: var(--white);
+  border: 0; font-size: 24px; font-weight: 500; cursor: pointer;
+  display: grid; place-items: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.guide-btn:hover { opacity: 0.9; }
+.guide-panel {
+  position: fixed; right: 20px; bottom: 84px; z-index: 90;
+  width: min(380px, calc(100vw - 40px));
+  max-height: min(70vh, 560px); overflow-y: auto;
+  background: var(--white); color: var(--void);
+  border-radius: 12px; padding: 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+.guide-panel[hidden] { display: none; }
+.guide-where {
+  background: var(--tint); border-radius: 8px; padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.guide-where-label { font-size: 11px; color: var(--mut1); margin-bottom: 4px; }
+.guide-where-text { font-size: 13px; line-height: 1.55; }
+.guide-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+.guide-intro { font-size: 13px; color: var(--mut1); line-height: 1.55; margin-bottom: 12px; }
+.guide-task {
+  display: block; width: 100%; text-align: left;
+  background: var(--white); color: var(--void);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 11px 14px; margin-bottom: 8px;
+  font-size: 14px; cursor: pointer;
+}
+.guide-task:hover { border-color: var(--blue); color: var(--blue); }
+.guide-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.guide-back {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--blue); font-size: 13px; flex: none;
+}
+.guide-step {
+  display: flex; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+}
+.guide-step.on { border-color: var(--blue); }
+.guide-num {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; font-weight: 500;
+  background: var(--tint); color: var(--blue);
+}
+.guide-step.on .guide-num { background: var(--blue); color: var(--white); }
+.guide-step-title { font-size: 14px; font-weight: 500; }
+.guide-step-body { font-size: 13px; line-height: 1.55; color: var(--mut1); }
+.guide-here { font-size: 12px; color: var(--blue); margin-top: 4px; }
+.guide-nav { display: flex; gap: 8px; margin-top: 12px; }
