@@ -71,6 +71,31 @@ export function parseFinalizeResult(
 }
 
 /**
+ * The finalize decision in a transaction body's summary, the
+ * shape the mainnet indexer serves: { transaction: {
+ * summary: { outcome, finalized_at }, rejected_reason } }.
+ * The body endpoint answers on mainnet where the /result
+ * endpoint 404s for the same transaction, so this is the
+ * first place a decision is read. Returns null when the body
+ * carries no summary yet.
+ */
+export function parseBodySummary(
+  body: unknown,
+): { decision: string; reason: string | null } | null {
+  const tx = (body as { transaction?: unknown })?.transaction;
+  if (!tx || typeof tx !== "object") return null;
+  const rec = tx as Record<string, unknown>;
+  const summary = rec.summary as { outcome?: unknown } | undefined;
+  if (!summary || typeof summary.outcome !== "string") return null;
+  const rejected = rec.rejected_reason;
+  return {
+    decision: summary.outcome,
+    reason:
+      typeof rejected === "string" && rejected.trim() ? rejected : null,
+  };
+}
+
+/**
  * The plain part of the chain's abort detail: the template's
  * own reason when the detail carries one, else the whole
  * detail, trimmed.
@@ -80,6 +105,48 @@ export function plainReason(abortDetails: string): string {
   const at = abortDetails.lastIndexOf(marker);
   const tail = at >= 0 ? abortDetails.slice(at + marker.length) : abortDetails;
   return tail.trim();
+}
+
+/** The finalize decision for one transaction, read from the
+ * body summary first (the route that answers on mainnet) and
+ * the /result endpoint second (the route that answers on
+ * Esmeralda). Returns null when neither carries a decision
+ * yet. The reason is the body's rejected reason, or the
+ * /result record's abort details. */
+async function readDecision(
+  indexer: Indexer,
+  txId: string,
+): Promise<{ decision: string; reason: string | null } | null> {
+  try {
+    const summary = parseBodySummary(await indexer.transaction(txId));
+    if (summary) return summary;
+  } catch {
+    /* the body is not readable yet; fall through */
+  }
+  try {
+    const parsed = parseFinalizeResult(
+      await indexer.transactionResult(txId),
+    );
+    if (parsed) return { decision: parsed.decision, reason: parsed.abortDetails };
+  } catch {
+    /* the result is not readable yet */
+  }
+  return null;
+}
+
+/** The failure reason for a decision that is not a clean
+ * commit: the plain template reason when the detail carries
+ * one, else what the decision itself says. */
+function failureReason(decision: {
+  decision: string;
+  reason: string | null;
+}): string {
+  if (decision.reason && decision.reason.trim()) {
+    return plainReason(decision.reason);
+  }
+  return decision.decision === "Commit"
+    ? "The chain accepted the fee but the execution failed"
+    : `The chain's final decision was ${decision.decision.toLowerCase()}`;
 }
 
 function findCalls(
@@ -141,6 +208,14 @@ export interface ConfirmOptions {
   pollMs?: number;
   eventTries?: number;
   resultTries?: number;
+  versionTries?: number;
+  // The watched component's version before the action was
+  // submitted. When known, a version increase proves the
+  // action's transaction landed even when the event feed has
+  // not indexed it yet, so the confirmation does not depend
+  // on the feed being fresh. Null when the version could not
+  // be read before submitting, and the version route is off.
+  beforeVersion?: number | null;
   // The connected account's owner key. When known, a candidate
   // transaction must be sealed by it to count as this action's
   // own; when null, matching falls back to component and
@@ -155,10 +230,14 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * action submitted: a transaction id not in `before` whose
  * body calls one of `methods` on the component and, when the
  * signer's key is known, is sealed by that key. Then read its
- * finalize result. Bounded: when nothing matching can be read
- * inside the budget, the outcome is unconfirmed, never a
- * guessed success, and an unconfirmed outcome names a
- * transaction only when that transaction was matched as the
+ * finalize decision. When the feed stays quiet, watch the
+ * component's version instead: a version increase proves a
+ * transaction changed the component, and a failed execution
+ * changes nothing, so an increase after this action was
+ * submitted is the action landing. Bounded: when nothing can
+ * be read inside the budget, the outcome is unconfirmed,
+ * never a guessed success, and an unconfirmed outcome names
+ * a transaction only when that transaction was matched as the
  * action's own.
  */
 export async function confirmAction(
@@ -171,6 +250,8 @@ export async function confirmAction(
   const pollMs = opts.pollMs ?? 2500;
   const eventTries = opts.eventTries ?? 24;
   const resultTries = opts.resultTries ?? 18;
+  const versionTries = opts.versionTries ?? 12;
+  const beforeVersion = opts.beforeVersion ?? null;
   const signer = opts.signer ?? null;
   let matched: string | null = null;
   const notMine = new Set<string>();
@@ -201,28 +282,64 @@ export async function confirmAction(
       }
     }
   }
+  if (!matched && beforeVersion !== null) {
+    // The feed has not indexed the transaction yet. Watch the
+    // component's version: a failed execution changes nothing,
+    // so an increase after the submit is the action landing.
+    // A final feed read then tries to name the transaction for
+    // the receipt link; when the feed is still quiet the
+    // outcome is confirmed without a link, which is honest:
+    // the state change is the proof, the link is a nicety.
+    let versionProved = false;
+    for (let i = 0; i < versionTries && !matched && !versionProved; i++) {
+      if (i > 0) await sleep(pollMs);
+      let version: number | null = null;
+      try {
+        version = (await indexer.substate(component))?.version ?? null;
+      } catch {
+        continue;
+      }
+      if (version !== null && version > beforeVersion) {
+        versionProved = true;
+        try {
+          const events = await indexer.events(component);
+          for (const ev of events) {
+            if (!ev.txId || before.has(ev.txId) || notMine.has(ev.txId)) continue;
+            try {
+              const body = await indexer.transaction(ev.txId);
+              if (
+                txCalls(body, component, methods) &&
+                (!signer || sealSigner(body) === signer)
+              ) {
+                matched = ev.txId;
+                break;
+              }
+              notMine.add(ev.txId);
+            } catch {
+              /* leave the candidate unchecked */
+            }
+          }
+        } catch {
+          /* the feed is still unreadable; the version is the proof */
+        }
+      }
+    }
+    if (!matched && versionProved) {
+      return { kind: "confirmed", txId: null, reason: null };
+    }
+  }
   if (!matched) return { kind: "unconfirmed", txId: null, reason: null };
   for (let i = 0; i < resultTries; i++) {
     if (i > 0) await sleep(pollMs);
-    let parsed: { decision: string; abortDetails: string | null } | null = null;
-    try {
-      parsed = parseFinalizeResult(await indexer.transactionResult(matched));
-    } catch {
-      parsed = null;
-    }
-    if (parsed) {
-      if (parsed.decision === "Commit" && parsed.abortDetails === null) {
+    const decision = await readDecision(indexer, matched);
+    if (decision) {
+      if (decision.decision === "Commit" && decision.reason === null) {
         return { kind: "confirmed", txId: matched, reason: null };
       }
       return {
         kind: "failed",
         txId: matched,
-        reason:
-          parsed.abortDetails && parsed.abortDetails.trim()
-            ? plainReason(parsed.abortDetails)
-            : parsed.decision === "Commit"
-              ? "The chain accepted the fee but the execution failed"
-              : `The chain's final decision was ${parsed.decision.toLowerCase()}`,
+        reason: failureReason(decision),
       };
     }
   }

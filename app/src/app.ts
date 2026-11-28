@@ -295,6 +295,31 @@ export class App {
   }
 
   /**
+   * The watched component's version before the action, read
+   * with the same short leash. The confirmation uses it as a
+   * second route: when the event feed has not indexed the
+   * transaction yet, a version increase proves the action
+   * landed. Null when it cannot be read in time, and the
+   * version route is off.
+   */
+  private async snapshotVersion(component: string): Promise<number | null> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const sub = await Promise.race([
+        this.indexer.substate(component),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("snapshot timed out")), 5000);
+        }),
+      ]);
+      return sub?.version ?? null;
+    } catch {
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /**
    * Submit one action and report how it actually ended. The
    * wallet's "submitted" is not an ending: the transaction can
    * still fail at finalization, and the failure is invisible
@@ -315,6 +340,7 @@ export class App {
     if (this.wallet.account) calls.delete(this.wallet.account);
     const watch = [...calls.keys()][0];
     const before = watch ? await this.snapshotTxIds(watch) : null;
+    const beforeVersion = watch ? await this.snapshotVersion(watch) : null;
     dispatchTxStage({ stage: "wallet" });
     let result: unknown;
     try {
@@ -334,6 +360,10 @@ export class App {
     dispatchTxStage({ stage: "confirming" });
     const outcome = await confirmAction(this.indexer, watch, calls.get(watch)!, before, {
       ...confirmOpts,
+      // The version before the submit, so the confirmation can
+      // prove the action landed even when the event feed has
+      // not indexed it yet.
+      beforeVersion,
       // The derived key is what seals this account's
       // transactions, so it can tell the action's own
       // transaction apart from another actor's identical call.

@@ -13,6 +13,7 @@ import { buildCloseReveal, buildCommitBid, buildCreateCircle } from "../src/buil
 import {
   calledMethods,
   confirmAction,
+  parseBodySummary,
   parseFinalizeResult,
   plainReason,
   sealSigner,
@@ -196,10 +197,12 @@ interface FakeIndexerScript {
   events: { txId: string; topic: string }[][];
   bodies: Record<string, unknown>;
   results: Record<string, unknown>;
+  versions?: number[];
 }
 
 function fakeIndexer(script: FakeIndexerScript): Indexer {
   let eventCall = 0;
+  let versionCall = 0;
   return {
     events: async () => {
       const page = script.events[Math.min(eventCall, script.events.length - 1)];
@@ -216,10 +219,50 @@ function fakeIndexer(script: FakeIndexerScript): Indexer {
       if (!result) throw new Error("not found");
       return result;
     },
+    substate: async () => {
+      const versions = script.versions ?? [];
+      const version = versions[Math.min(versionCall, versions.length - 1)];
+      versionCall++;
+      if (version === undefined) throw new Error("not found");
+      return { version, value: [] };
+    },
   } as unknown as Indexer;
 }
 
+/** A transaction body in the mainnet indexer's envelope, with
+ * the summary outcome the body endpoint serves. */
+function bodyWithSummary(outcome: string, rejected: string | null): unknown {
+  return {
+    transaction: {
+      transaction_id: NEW_TX,
+      summary: { outcome, finalized_at: "2026-11-28 04:40:00.0" },
+      rejected_reason: rejected,
+    },
+  };
+}
+
 const FAST = { pollMs: 1, eventTries: 4, resultTries: 3 };
+
+describe("parseBodySummary", () => {
+  it("reads a Commit outcome from the mainnet body summary", () => {
+    expect(
+      parseBodySummary(bodyWithSummary("Commit", null)),
+    ).toEqual({ decision: "Commit", reason: null });
+  });
+
+  it("reads a rejection with the chain's reason", () => {
+    expect(
+      parseBodySummary(bodyWithSummary("Reject", "OnlyFeeAccepted")),
+    ).toEqual({ decision: "Reject", reason: "OnlyFeeAccepted" });
+  });
+
+  it("returns null when the body carries no summary yet", () => {
+    expect(parseBodySummary(null)).toBeNull();
+    expect(parseBodySummary({})).toBeNull();
+    expect(parseBodySummary({ transaction: {} })).toBeNull();
+    expect(parseBodySummary({ transaction: { summary: {} } })).toBeNull();
+  });
+});
 
 describe("confirmAction", () => {
   it("confirms when the action's transaction commits clean", async () => {
@@ -375,6 +418,84 @@ describe("confirmAction", () => {
       new Set(["close_reveal"]),
       new Set([OLD_TX]),
       FAST,
+    );
+    expect(outcome).toEqual({ kind: "unconfirmed", txId: null, reason: null });
+  });
+
+  it("confirms from the body summary when the /result endpoint is missing", async () => {
+    // The mainnet case: the event feed names the transaction,
+    // but /result 404s, so the decision comes from the body
+    // summary instead.
+    const indexer = fakeIndexer({
+      events: [
+        [
+          { txId: NEW_TX, topic: "std.component.updated" },
+          { txId: OLD_TX, topic: "std.component.updated" },
+        ],
+      ],
+      bodies: {
+        [NEW_TX]: {
+          transaction: {
+            instructions: [
+              {
+                CallMethod: {
+                  call: { Address: TENDER },
+                  method: "close_reveal",
+                  args: [],
+                },
+              },
+            ],
+            summary: { outcome: "Commit", finalized_at: "2026-11-28 04:40:00.0" },
+            rejected_reason: null,
+          },
+        },
+      },
+      results: {},
+    });
+    const outcome = await confirmAction(
+      indexer,
+      TENDER,
+      new Set(["close_reveal"]),
+      new Set([OLD_TX]),
+      FAST,
+    );
+    expect(outcome).toEqual({ kind: "confirmed", txId: NEW_TX, reason: null });
+  });
+
+  it("confirms from a version increase when the event feed is stale", async () => {
+    // The feed never shows the new transaction, but the
+    // component's version moves from 7 to 8 right after the
+    // submit: the action landed, even though the feed has not
+    // indexed it yet.
+    const indexer = fakeIndexer({
+      events: [[{ txId: OLD_TX, topic: "std.component.updated" }]],
+      bodies: {},
+      results: {},
+      versions: [7, 8],
+    });
+    const outcome = await confirmAction(
+      indexer,
+      TENDER,
+      new Set(["close_reveal"]),
+      new Set([OLD_TX]),
+      { ...FAST, beforeVersion: 7 },
+    );
+    expect(outcome).toEqual({ kind: "confirmed", txId: null, reason: null });
+  });
+
+  it("stays unconfirmed when the feed is stale and the version does not move", async () => {
+    const indexer = fakeIndexer({
+      events: [[{ txId: OLD_TX, topic: "std.component.updated" }]],
+      bodies: {},
+      results: {},
+      versions: [7, 7, 7, 7],
+    });
+    const outcome = await confirmAction(
+      indexer,
+      TENDER,
+      new Set(["close_reveal"]),
+      new Set([OLD_TX]),
+      { ...FAST, beforeVersion: 7 },
     );
     expect(outcome).toEqual({ kind: "unconfirmed", txId: null, reason: null });
   });
